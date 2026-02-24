@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockLens — 주식 종목 검색</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --border: #1e2230;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --green: #00c896;
+    --red: #ff4757;
+    --text: #e8eaf0;
+    --muted: #5a6070;
+    --card: #13161f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 32px 48px 0;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.8rem;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-shadow: 0 0 40px rgba(0,229,255,0.4);
+  }
+  .logo-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-weight: 300;
+  }
+
+  .hero {
+    position: relative;
+    z-index: 10;
+    padding: 60px 48px 40px;
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 4rem;
+    letter-spacing: 2px;
+    line-height: 1;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero p {
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+  }
+
+  /* Search */
+  .search-wrap {
+    position: relative;
+    z-index: 10;
+    max-width: 640px;
+    margin: 0 auto 16px;
+    padding: 0 48px;
+  }
+  .search-box {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,229,255,0.08), 0 0 30px rgba(0,229,255,0.1);
+  }
+  .search-icon {
+    padding: 0 16px;
+    color: var(--muted);
+    font-size: 1.1rem;
+  }
+  input[type="text"] {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    padding: 18px 0;
+    letter-spacing: 0.5px;
+  }
+  input[type="text"]::placeholder { color: var(--muted); }
+  .search-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    cursor: pointer;
+    padding: 0 28px;
+    height: 58px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .search-btn:hover { background: #33eaff; }
+  .search-btn:active { transform: scale(0.98); }
+
+  .examples {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    margin-bottom: 40px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .examples span {
+    cursor: pointer;
+    color: var(--accent);
+    opacity: 0.7;
+    margin: 0 6px;
+    transition: opacity 0.2s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .examples span:hover { opacity: 1; }
+
+  /* market tabs */
+  .tabs {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 40px;
+  }
+  .tab {
+    padding: 8px 20px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: transparent;
+    transition: all 0.2s;
+  }
+  .tab.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.05); }
+  .tab:hover:not(.active) { border-color: var(--muted); color: var(--text); }
+
+  /* Results */
+  .results {
+    position: relative;
+    z-index: 10;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 48px 80px;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    display: none;
+  }
+  .loading .dots span {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin: 0 3px;
+    animation: bounce 1.2s infinite;
+  }
+  .loading .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-10px)} }
+
+  .error-msg {
+    text-align: center;
+    padding: 40px;
+    color: var(--red);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    display: none;
+    border: 1px solid rgba(255,71,87,0.2);
+    border-radius: 4px;
+    background: rgba(255,71,87,0.05);
+  }
+
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    animation: fadeUp 0.4s ease;
+    display: none;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+  .card-header {
+    padding: 24px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,229,255,0.02);
+  }
+  .card-title-wrap {}
+  .card-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .card-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .market-badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'Bebas Neue', sans-serif;
+  }
+  .badge-kr { background: rgba(124,58,237,0.2); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+  .badge-us { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); }
+
+  .price-wrap { text-align: right; }
+  .current-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2rem;
+    font-weight: 600;
+    letter-spacing: -1px;
+  }
+  .price-change {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+  .metric {
+    padding: 20px 24px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .metric:hover { background: rgba(255,255,255,0.02); }
+  .metric:nth-child(3n) { border-right: none; }
+  .metric-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .metric-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .metric-value.highlight { color: var(--accent); }
+  .metric-value.na { color: var(--muted); font-size: 0.9rem; }
+
+  .dividend-section {
+    padding: 20px 28px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    background: rgba(0,200,150,0.02);
+  }
+  .dividend-item { padding: 8px 0; }
+  .dividend-label {
+    font-size: 0.65rem;
+    color: var(--green);
+    opacity: 0.7;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 6px;
+  }
+  .dividend-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--green);
+    font-weight: 600;
+  }
+  .dividend-value.na { color: var(--muted); font-size: 0.85rem; font-weight: 400; }
+
+  /* Footer note */
+  .note {
+    position: relative; z-index: 10;
+    text-align: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 20px 20px 0; }
+    .hero { padding: 40px 20px 24px; }
+    .hero h1 { font-size: 2.5rem; }
+    .search-wrap { padding: 0 20px; }
+    .results { padding: 0 20px 60px; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .metric:nth-child(2n) { border-right: none; }
+    .metric:nth-child(3n) { border-right: 1px solid var(--border); }
+    .metric:nth-child(even) { border-right: none; }
+    .dividend-section { grid-template-columns: 1fr; }
+    .card-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .price-wrap { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">StockLens</div>
+  <div class="logo-sub">주식 종목 검색</div>
+</header>
+
+<div class="hero">
+  <h1>FIND YOUR STOCK</h1>
+  <p>한국 · 미국 주식 실시간 데이터 조회</p>
+</div>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <div class="search-icon">⌕</div>
+    <input type="text" id="searchInput" placeholder="종목명 또는 코드 입력 (예: 삼성전자, AAPL)" autocomplete="off">
+    <button class="search-btn" onclick="doSearch()">SEARCH</button>
+  </div>
+</div>
+
+<div class="examples">
+  예시: 
+  <span onclick="fillSearch('005930.KS')">삼성전자</span>
+  <span onclick="fillSearch('035720.KS')">카카오</span>
+  <span onclick="fillSearch('AAPL')">AAPL</span>
+  <span onclick="fillSearch('TSLA')">TSLA</span>
+  <span onclick="fillSearch('NVDA')">NVDA</span>
+</div>
+
+<div class="results">
+  <div class="loading" id="loading">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div style="margin-top:12px">데이터를 불러오는 중...</div>
+  </div>
+  <div class="error-msg" id="errorMsg"></div>
+  <div class="result-card" id="resultCard">
+    <div class="card-header">
+      <div class="card-title-wrap">
+        <div class="card-name" id="stockName">—</div>
+        <div class="card-code">
+          <span id="stockCode">—</span>
+          <span class="market-badge" id="marketBadge">—</span>
+        </div>
+      </div>
+      <div class="price-wrap">
+        <div class="current-price" id="currentPrice">—</div>
+        <div class="price-change" id="priceChange">—</div>
+      </div>
+    </div>
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-label">PER</div>
+        <div class="metric-value" id="per">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">PBR</div>
+        <div class="metric-value" id="pbr">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">ROE</div>
+        <div class="metric-value highlight" id="roe">—</div>
+      </div>
+      <div class="metric" style="border-bottom:none">
+        <div class="metric-label">52주 최고</div>
+        <div class="metric-value" id="high52">—</div>
+      </div>
+      <div class="metric" style="border-bottom:none">
+        <div class="metric-label">52주 최저</div>
+        <div class="metric-value" id="low52">—</div>
+      </div>
+      <div class="metric" style="border-bottom:none">
+        <div class="metric-label">시가총액</div>
+        <div class="metric-value" id="marketCap">—</div>
+      </div>
+    </div>
+    <div class="dividend-section">
+      <div class="dividend-item">
+        <div class="dividend-label">배당률</div>
+        <div class="dividend-value" id="divYield">—</div>
+      </div>
+      <div class="dividend-item">
+        <div class="dividend-label">배당금 (연간)</div>
+        <div class="dividend-value" id="divAmount">—</div>
+      </div>
+      <div class="dividend-item">
+        <div class="dividend-label">배당 빈도</div>
+        <div class="dividend-value" id="divFreq">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  ⚠ 이 데모는 백엔드 API 연결이 필요합니다. 아래 Python 서버를 실행하세요.<br>
+  데이터 출처: Yahoo Finance (yfinance) — 지연 데이터 포함 가능
+</div>
+
+<script>
+  const API_BASE = 'http://localhost:8000';
+
+  function fillSearch(ticker) {
+    document.getElementById('searchInput').value = ticker;
+    doSearch();
+  }
+
+  document.getElementById('searchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+
+  async function doSearch() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) return;
+
+    showLoading(true);
+    hideAll();
+
+    try {
+      const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+      if (!res.ok) throw new Error((await res.json()).detail || '검색 실패');
+      const data = await res.json();
+      renderResult(data);
+    } catch (err) {
+      showError(err.message || '서버에 연결할 수 없습니다. Python 백엔드를 실행했는지 확인하세요.');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function renderResult(d) {
+    const isKR = d.market === 'KR';
+    const currency = isKR ? '₩' : '$';
+
+    setText('stockName', d.name || d.ticker);
+    setText('stockCode', d.ticker);
+    
+    const badge = document.getElementById('marketBadge');
+    badge.textContent = isKR ? 'KRX' : 'US';
+    badge.className = 'market-badge ' + (isKR ? 'badge-kr' : 'badge-us');
+
+    const price = d.current_price;
+    setText('currentPrice', price != null ? `${currency}${fmtNum(price)}` : 'N/A');
+
+    const chg = d.price_change_pct;
+    const chgEl = document.getElementById('priceChange');
+    if (chg != null) {
+      const sign = chg >= 0 ? '+' : '';
+      chgEl.textContent = `${sign}${chg.toFixed(2)}% 오늘`;
+      chgEl.className = 'price-change ' + (chg >= 0 ? 'up' : 'down');
+    } else {
+      chgEl.textContent = '변동률 N/A';
+      chgEl.className = 'price-change';
+    }
+
+    setMetric('per', d.per, 'x');
+    setMetric('pbr', d.pbr, 'x');
+    setMetric('roe', d.roe != null ? (d.roe * 100).toFixed(1) : null, '%');
+    setText('high52', d.high_52w != null ? `${currency}${fmtNum(d.high_52w)}` : 'N/A');
+    setText('low52', d.low_52w != null ? `${currency}${fmtNum(d.low_52w)}` : 'N/A');
+    setText('marketCap', d.market_cap != null ? fmtCap(d.market_cap, currency) : 'N/A');
+
+    // Dividends
+    const divYieldEl = document.getElementById('divYield');
+    const divAmtEl = document.getElementById('divAmount');
+    const divFreqEl = document.getElementById('divFreq');
+
+    if (d.dividend_yield != null && d.dividend_yield > 0) {
+      divYieldEl.textContent = (d.dividend_yield * 100).toFixed(2) + '%';
+      divYieldEl.className = 'dividend-value';
+    } else {
+      divYieldEl.textContent = '무배당';
+      divYieldEl.className = 'dividend-value na';
+    }
+
+    if (d.dividend_rate != null && d.dividend_rate > 0) {
+      divAmtEl.textContent = `${currency}${fmtNum(d.dividend_rate)}`;
+      divAmtEl.className = 'dividend-value';
+    } else {
+      divAmtEl.textContent = '—';
+      divAmtEl.className = 'dividend-value na';
+    }
+
+    if (d.dividend_frequency) {
+      divFreqEl.textContent = d.dividend_frequency;
+      divFreqEl.className = 'dividend-value';
+    } else {
+      divFreqEl.textContent = '—';
+      divFreqEl.className = 'dividend-value na';
+    }
+
+    document.getElementById('resultCard').style.display = 'block';
+  }
+
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    el.textContent = val ?? 'N/A';
+  }
+
+  function setMetric(id, val, suffix = '') {
+    const el = document.getElementById(id);
+    if (val != null) {
+      el.textContent = (typeof val === 'number' ? val.toFixed(2) : val) + suffix;
+      el.className = 'metric-value';
+    } else {
+      el.textContent = 'N/A';
+      el.className = 'metric-value na';
+    }
+  }
+
+  function fmtNum(n) {
+    return n >= 1000 ? n.toLocaleString('ko-KR', { maximumFractionDigits: 0 }) : n.toFixed(2);
+  }
+
+  function fmtCap(cap, currency) {
+    if (cap >= 1e12) return `${currency}${(cap/1e12).toFixed(1)}조`;
+    if (cap >= 1e8) return `${currency}${(cap/1e8).toFixed(1)}억`;
+    if (cap >= 1e6) return `${currency}${(cap/1e6).toFixed(1)}M`;
+    return `${currency}${cap.toLocaleString()}`;
+  }
+
+  function showLoading(show) {
+    document.getElementById('loading').style.display = show ? 'block' : 'none';
+  }
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+  }
+  function hideAll() {
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('errorMsg').style.display = 'none';
+  }
+</script>
+</body>
+</html>
