@@ -8,6 +8,9 @@ import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI(title="StockLens API")
 
 app.add_middleware(
@@ -3407,6 +3410,9 @@ def get_us_stock(ticker: str) -> dict:
         "dividend_frequency": None,
     }
 
+@app.get("/")
+def serve_frontend():
+    return FileResponse("stock_search.html")
 
 @app.get("/search")
 def search_stock(q: str):
