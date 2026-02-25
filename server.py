@@ -7,9 +7,7 @@ import os
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="StockLens API")
 
@@ -3242,7 +3240,7 @@ KR_ALIAS_MAP = {
     "하이브": "352820",
     "카카오게임즈": "293490",
     "쿠팡": "358200",
-    # 우선주
+        # 우선주
     "삼성전자우": "005935",
     "현대차우": "005385",
     "현대차2우b": "005387",
@@ -3420,9 +3418,11 @@ def get_us_stock(ticker: str) -> dict:
         "dividend_frequency": None,
     }
 
+
 @app.get("/")
 def serve_frontend():
     return FileResponse("stock_search.html")
+
 
 @app.get("/search")
 def search_stock(q: str):
@@ -3439,6 +3439,113 @@ def search_stock(q: str):
     except Exception as e:
         _token_cache["access_token"] = None
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/chart")
+def get_chart(q: str, period: str = "1M"):
+    """
+    주식 차트 데이터 조회
+    period: 1D(당일), 1W(1주), 1M(1개월), 3M(3개월), 1Y(1년)
+    """
+    if not q:
+        raise HTTPException(status_code=400, detail="검색어를 입력하세요.")
+
+    ticker = normalize_ticker(q)
+
+    # 기간별 설정
+    from datetime import datetime, timedelta
+    today = datetime.today()
+    period_map = {
+        "1D": (today - timedelta(days=1),   "D"),
+        "1W": (today - timedelta(weeks=1),  "D"),
+        "1M": (today - timedelta(days=30),  "D"),
+        "3M": (today - timedelta(days=90),  "D"),
+        "1Y": (today - timedelta(days=365), "W"),
+    }
+    start_dt, div_code = period_map.get(period, period_map["1M"])
+    start_str = start_dt.strftime("%Y%m%d")
+    end_str = today.strftime("%Y%m%d")
+
+    try:
+        if is_korean(ticker):
+            return get_kr_chart(ticker, start_str, end_str, div_code)
+        else:
+            return get_us_chart(ticker, start_str, end_str, div_code)
+    except HTTPException:
+        raise
+    except Exception as e:
+        _token_cache["access_token"] = None
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def get_kr_chart(ticker: str, start: str, end: str, div_code: str) -> dict:
+    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"
+    params = {
+        "FID_COND_MRKT_DIV_CODE": "J",
+        "FID_INPUT_ISCD": ticker,
+        "FID_INPUT_DATE_1": start,
+        "FID_INPUT_DATE_2": end,
+        "FID_PERIOD_DIV_CODE": div_code,
+        "FID_ORG_ADJ_PRC": "0",
+    }
+    res = requests.get(url, headers=kis_headers("FHKST03010100"), params=params)
+    if res.status_code != 200:
+        raise HTTPException(status_code=404, detail="차트 데이터 조회 실패")
+    data = res.json()
+    if data.get("rt_cd") != "0":
+        raise HTTPException(status_code=404, detail=data.get("msg1", "조회 실패"))
+
+    output = data.get("output2", [])
+    result = []
+    for row in reversed(output):
+        result.append({
+            "date": row.get("stck_bsop_date", ""),
+            "open": safe_float(row.get("stck_oprc")),
+            "high": safe_float(row.get("stck_hgpr")),
+            "low": safe_float(row.get("stck_lwpr")),
+            "close": safe_float(row.get("stck_clpr")),
+            "volume": safe_float(row.get("acml_vol")),
+        })
+    return {"ticker": ticker, "market": "KR", "data": result}
+
+
+def get_us_chart(ticker: str, start: str, end: str, div_code: str) -> dict:
+    nasdaq = ["AAPL","TSLA","NVDA","MSFT","AMZN","GOOGL","GOOG","META",
+              "NFLX","INTC","AMD","QCOM","AVGO","TXN","MU","AMAT"]
+    excd = "NAS" if ticker in nasdaq else "NYS"
+
+    url = f"{KIS_BASE_URL}/uapi/overseas-price/v1/quotations/dailyprice"
+    params = {
+        "AUTH": "",
+        "EXCD": excd,
+        "SYMB": ticker,
+        "GUBN": "0" if div_code == "D" else "1",
+        "BYMD": end,
+        "MODP": "0",
+    }
+    res = requests.get(url, headers=kis_headers("HHDFS76240000"), params=params)
+    if res.status_code != 200 or res.json().get("rt_cd") != "0":
+        params["EXCD"] = "NAS" if excd == "NYS" else "NYS"
+        res = requests.get(url, headers=kis_headers("HHDFS76240000"), params=params)
+        if res.status_code != 200:
+            raise HTTPException(status_code=404, detail="차트 데이터 조회 실패")
+
+    data = res.json()
+    if data.get("rt_cd") != "0":
+        raise HTTPException(status_code=404, detail=data.get("msg1", "조회 실패"))
+
+    output = data.get("output2", [])
+    result = []
+    for row in reversed(output):
+        result.append({
+            "date": row.get("xymd", ""),
+            "open": safe_float(row.get("open")),
+            "high": safe_float(row.get("high")),
+            "low": safe_float(row.get("low")),
+            "close": safe_float(row.get("clos")),
+            "volume": safe_float(row.get("tvol")),
+        })
+    return {"ticker": ticker, "market": "US", "data": result}
 
 
 if __name__ == "__main__":

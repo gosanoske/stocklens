@@ -5,6 +5,122 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StockLens — 주식 종목 검색</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+  // ── 차트 ──
+  let chartInstance = null;
+  let currentChartTicker = null;
+  let currentPeriod = '1M';
+
+  async function loadChart(period) {
+    if (!currentChartTicker) return;
+    currentPeriod = period;
+
+    // 버튼 활성화
+    document.querySelectorAll('.period-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent === period);
+    });
+
+    document.getElementById('chartLoading').style.display = 'flex';
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    try {
+      const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(currentChartTicker)}&period=${period}`);
+      if (!res.ok) throw new Error('차트 데이터 없음');
+      const json = await res.json();
+      renderChart(json.data, json.market);
+    } catch(e) {
+      document.getElementById('chartLoading').textContent = '차트 데이터를 불러올 수 없습니다.';
+    }
+  }
+
+  function renderChart(data, market) {
+    document.getElementById('chartLoading').style.display = 'none';
+    if (!data || data.length === 0) {
+      document.getElementById('chartLoading').textContent = '데이터 없음';
+      document.getElementById('chartLoading').style.display = 'flex';
+      return;
+    }
+
+    const labels = data.map(d => {
+      const s = String(d.date);
+      if (s.length === 8) return `${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
+      return s;
+    });
+    const closes = data.map(d => d.close);
+    const first = closes[0];
+    const last = closes[closes.length - 1];
+    const isUp = last >= first;
+    const lineColor = isUp ? '#ff4757' : '#4a9eff';
+    const fillColor = isUp ? 'rgba(255,71,87,0.08)' : 'rgba(74,158,255,0.08)';
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: closes,
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: lineColor,
+          fill: true,
+          tension: 0.2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1d28',
+            borderColor: '#2a2d3a',
+            borderWidth: 1,
+            titleColor: '#7a8090',
+            bodyColor: '#e8eaf0',
+            titleFont: { family: 'JetBrains Mono', size: 11 },
+            bodyFont: { family: 'JetBrains Mono', size: 13 },
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.y;
+                return market === 'KR'
+                  ? '  ₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
+                  : '  $' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: {
+              color: '#5a6070',
+              font: { family: 'JetBrains Mono', size: 10 },
+              maxTicksLimit: 6,
+              maxRotation: 0,
+            }
+          },
+          y: {
+            position: 'right',
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: {
+              color: '#5a6070',
+              font: { family: 'JetBrains Mono', size: 10 },
+              callback: v => market === 'KR'
+                ? v.toLocaleString('ko-KR', {maximumFractionDigits:0})
+                : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
+            }
+          }
+        }
+      }
+    });
+  }
+
+</script>
 <style>
   :root {
     --bg: #0a0c10;
@@ -257,6 +373,52 @@
     .div-item { border-right: none; border-bottom: 1px solid var(--border); }
     .div-item:last-child { border-bottom: none; }
   }
+
+  /* ── 차트 섹션 ── */
+  .chart-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    border-bottom: none;
+    padding: 16px 20px;
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .chart-title {
+    font-size: 0.65rem;
+    color: var(--label);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .period-tabs {
+    display: flex;
+    gap: 4px;
+  }
+  .period-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .period-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .period-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); }
+  .chart-wrap { position: relative; height: 220px; }
+  .chart-loading {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+  }
 </style>
 </head>
 <body>
@@ -384,6 +546,24 @@
           <div class="range-dot" id="rangeDot" style="left:50%"></div>
         </div>
         <div class="range-val high" id="high52">—</div>
+      </div>
+    </div>
+
+
+    <!-- 차트 -->
+    <div class="chart-section" id="chartSection" style="display:none">
+      <div class="chart-header">
+        <div class="chart-title">주가 차트</div>
+        <div class="period-tabs">
+          <button class="period-btn" onclick="loadChart('1W')">1W</button>
+          <button class="period-btn active" onclick="loadChart('1M')">1M</button>
+          <button class="period-btn" onclick="loadChart('3M')">3M</button>
+          <button class="period-btn" onclick="loadChart('1Y')">1Y</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-loading" id="chartLoading">불러오는 중...</div>
+        <canvas id="priceChart"></canvas>
       </div>
     </div>
 
@@ -527,6 +707,10 @@
     }
 
     document.getElementById('resultCard').style.display = 'block';
+    // 차트 로드
+    document.getElementById('chartSection').style.display = 'block';
+    currentChartTicker = d.ticker;
+    loadChart(currentPeriod);
   }
 
   function setText(id, val) { document.getElementById(id).textContent = val ?? '—'; }
@@ -596,6 +780,121 @@
   function showLoading(show) { document.getElementById('loading').style.display = show ? 'block' : 'none'; }
   function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = '⚠ ' + msg; el.style.display = 'block'; }
   function hideAll() { document.getElementById('resultCard').style.display = 'none'; document.getElementById('errorMsg').style.display = 'none'; }
+
+  // ── 차트 ──
+  let chartInstance = null;
+  let currentChartTicker = null;
+  let currentPeriod = '1M';
+
+  async function loadChart(period) {
+    if (!currentChartTicker) return;
+    currentPeriod = period;
+
+    // 버튼 활성화
+    document.querySelectorAll('.period-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent === period);
+    });
+
+    document.getElementById('chartLoading').style.display = 'flex';
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    try {
+      const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(currentChartTicker)}&period=${period}`);
+      if (!res.ok) throw new Error('차트 데이터 없음');
+      const json = await res.json();
+      renderChart(json.data, json.market);
+    } catch(e) {
+      document.getElementById('chartLoading').textContent = '차트 데이터를 불러올 수 없습니다.';
+    }
+  }
+
+  function renderChart(data, market) {
+    document.getElementById('chartLoading').style.display = 'none';
+    if (!data || data.length === 0) {
+      document.getElementById('chartLoading').textContent = '데이터 없음';
+      document.getElementById('chartLoading').style.display = 'flex';
+      return;
+    }
+
+    const labels = data.map(d => {
+      const s = String(d.date);
+      if (s.length === 8) return `${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
+      return s;
+    });
+    const closes = data.map(d => d.close);
+    const first = closes[0];
+    const last = closes[closes.length - 1];
+    const isUp = last >= first;
+    const lineColor = isUp ? '#ff4757' : '#4a9eff';
+    const fillColor = isUp ? 'rgba(255,71,87,0.08)' : 'rgba(74,158,255,0.08)';
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: closes,
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: lineColor,
+          fill: true,
+          tension: 0.2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1d28',
+            borderColor: '#2a2d3a',
+            borderWidth: 1,
+            titleColor: '#7a8090',
+            bodyColor: '#e8eaf0',
+            titleFont: { family: 'JetBrains Mono', size: 11 },
+            bodyFont: { family: 'JetBrains Mono', size: 13 },
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.y;
+                return market === 'KR'
+                  ? '  ₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
+                  : '  $' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: {
+              color: '#5a6070',
+              font: { family: 'JetBrains Mono', size: 10 },
+              maxTicksLimit: 6,
+              maxRotation: 0,
+            }
+          },
+          y: {
+            position: 'right',
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: {
+              color: '#5a6070',
+              font: { family: 'JetBrains Mono', size: 10 },
+              callback: v => market === 'KR'
+                ? v.toLocaleString('ko-KR', {maximumFractionDigits:0})
+                : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
+            }
+          }
+        }
+      }
+    });
+  }
+
 </script>
 </body>
 </html>
