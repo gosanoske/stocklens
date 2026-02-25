@@ -3229,6 +3229,18 @@ KR_TICKER_MAP = {
     "힘스": "238490"
 }
 
+# 별칭 매핑 (한글명이 없는 종목 추가)
+KR_ALIAS_MAP = {
+    "네이버": "035420",
+    "넥슨": "225130",
+    "크래프톤": "259960",
+    "카카오뱅크": "323410",
+    "카카오페이": "377300",
+    "쿠팡": "358200",
+}
+
+# 별칭을 메인 맵에 병합
+KR_TICKER_MAP.update({k.lower(): v for k, v in KR_ALIAS_MAP.items()})
 
 def get_access_token():
     if _token_cache["access_token"]:
