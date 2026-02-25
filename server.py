@@ -43,7 +43,7 @@ def get_access_token():
     }
     res = requests.post(url, json=body)
     if res.status_code != 200:
-        raise HTTPException(status_code=500, detail="KIS 토큰 발급 실패")
+        raise HTTPException(status_code=500, detail=f"KIS 토큰 발급 실패: {res.status_code} / {res.text}")
     token = res.json().get("access_token")
     _token_cache["access_token"] = token
     return token
