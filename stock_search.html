@@ -11,12 +11,12 @@
     --surface: #111318;
     --border: #1e2230;
     --accent: #00e5ff;
-    --accent2: #7c3aed;
     --green: #00c896;
     --red: #ff4757;
     --text: #e8eaf0;
     --muted: #5a6070;
     --card: #13161f;
+    --label: #7a8090;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -24,81 +24,39 @@
     color: var(--text);
     font-family: 'Noto Sans KR', sans-serif;
     min-height: 100vh;
-    overflow-x: hidden;
   }
-
-  /* background grid */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     background-image:
-      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
     background-size: 40px 40px;
     pointer-events: none;
     z-index: 0;
   }
 
+  /* Header */
   header {
-    position: relative;
-    z-index: 10;
-    padding: 32px 48px 0;
+    position: relative; z-index: 10;
+    padding: 24px 40px 0;
     display: flex;
     align-items: baseline;
-    gap: 12px;
+    gap: 10px;
   }
-  .logo {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 2.8rem;
-    letter-spacing: 4px;
-    color: var(--accent);
-    text-shadow: 0 0 40px rgba(0,229,255,0.4);
-  }
-  .logo-sub {
-    font-size: 0.75rem;
-    color: var(--muted);
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    font-weight: 300;
-  }
-
-  .hero {
-    position: relative;
-    z-index: 10;
-    padding: 60px 48px 40px;
-    max-width: 900px;
-    margin: 0 auto;
-    text-align: center;
-  }
-  .hero h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 4rem;
-    letter-spacing: 2px;
-    line-height: 1;
-    margin-bottom: 16px;
-    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  .hero p {
-    color: var(--muted);
-    font-size: 0.95rem;
-    font-weight: 300;
-    letter-spacing: 1px;
-  }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 4px; color: var(--accent); text-shadow: 0 0 30px rgba(0,229,255,0.4); }
+  .logo-sub { font-size: 0.7rem; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; }
 
   /* Search */
-  .search-wrap {
-    position: relative;
-    z-index: 10;
-    max-width: 640px;
-    margin: 0 auto 16px;
-    padding: 0 48px;
+  .search-area {
+    position: relative; z-index: 10;
+    max-width: 680px;
+    margin: 32px auto 12px;
+    padding: 0 24px;
   }
   .search-box {
     display: flex;
-    align-items: center;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -107,263 +65,197 @@
   }
   .search-box:focus-within {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(0,229,255,0.08), 0 0 30px rgba(0,229,255,0.1);
+    box-shadow: 0 0 0 3px rgba(0,229,255,0.07), 0 0 24px rgba(0,229,255,0.08);
   }
-  .search-icon {
-    padding: 0 16px;
-    color: var(--muted);
-    font-size: 1.1rem;
-  }
+  .search-icon { padding: 0 14px; color: var(--muted); font-size: 1rem; display:flex; align-items:center; }
   input[type="text"] {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1rem;
-    padding: 18px 0;
-    letter-spacing: 0.5px;
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem; padding: 16px 0; letter-spacing: 0.5px;
   }
-  input[type="text"]::placeholder { color: var(--muted); }
+  input::placeholder { color: var(--muted); }
   .search-btn {
-    background: var(--accent);
-    color: #000;
-    border: none;
-    cursor: pointer;
-    padding: 0 28px;
-    height: 58px;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.1rem;
-    letter-spacing: 2px;
-    transition: background 0.2s, transform 0.1s;
+    background: var(--accent); color: #000; border: none; cursor: pointer;
+    padding: 0 24px; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem; letter-spacing: 2px; transition: background 0.2s;
   }
   .search-btn:hover { background: #33eaff; }
-  .search-btn:active { transform: scale(0.98); }
 
   .examples {
-    position: relative;
-    z-index: 10;
-    text-align: center;
-    margin-bottom: 40px;
-    font-size: 0.75rem;
-    color: var(--muted);
-    letter-spacing: 1px;
+    position: relative; z-index: 10;
+    text-align: center; margin-bottom: 28px;
+    font-size: 0.72rem; color: var(--muted); letter-spacing: 1px;
   }
   .examples span {
-    cursor: pointer;
-    color: var(--accent);
-    opacity: 0.7;
-    margin: 0 6px;
-    transition: opacity 0.2s;
-    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer; color: var(--accent); opacity: 0.65;
+    margin: 0 5px; font-family: 'JetBrains Mono', monospace;
+    transition: opacity 0.15s;
   }
   .examples span:hover { opacity: 1; }
 
-  /* market tabs */
-  .tabs {
-    position: relative;
-    z-index: 10;
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    margin-bottom: 40px;
-  }
-  .tab {
-    padding: 8px 20px;
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    cursor: pointer;
-    font-size: 0.75rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--muted);
-    background: transparent;
-    transition: all 0.2s;
-  }
-  .tab.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.05); }
-  .tab:hover:not(.active) { border-color: var(--muted); color: var(--text); }
-
-  /* Results */
-  .results {
-    position: relative;
-    z-index: 10;
+  /* Main layout */
+  .main {
+    position: relative; z-index: 10;
     max-width: 900px;
     margin: 0 auto;
-    padding: 0 48px 80px;
+    padding: 0 24px 60px;
   }
 
-  .loading {
-    text-align: center;
-    padding: 60px 0;
-    color: var(--muted);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    display: none;
-  }
-  .loading .dots span {
-    display: inline-block;
-    width: 6px; height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    margin: 0 3px;
-    animation: bounce 1.2s infinite;
-  }
-  .loading .dots span:nth-child(2) { animation-delay: 0.2s; }
-  .loading .dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-10px)} }
+  /* Loading / Error */
+  .loading { text-align: center; padding: 50px 0; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; display: none; }
+  .dots span { display: inline-block; width: 5px; height: 5px; background: var(--accent); border-radius: 50%; margin: 0 3px; animation: bounce 1.2s infinite; }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-8px)} }
+  .error-msg { text-align: center; padding: 32px; color: var(--red); font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; display: none; border: 1px solid rgba(255,71,87,0.2); border-radius: 4px; background: rgba(255,71,87,0.04); }
 
-  .error-msg {
-    text-align: center;
-    padding: 40px;
-    color: var(--red);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    display: none;
-    border: 1px solid rgba(255,71,87,0.2);
-    border-radius: 4px;
-    background: rgba(255,71,87,0.05);
-  }
+  /* Result Card */
+  .result-card { display: none; animation: fadeUp 0.35s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
-  .result-card {
+  /* ── Top: 종목명 + 현재가 ── */
+  .top-section {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-    animation: fadeUp 0.4s ease;
-    display: none;
-  }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-
-  .card-header {
-    padding: 24px 28px;
+    border-radius: 6px 6px 0 0;
+    padding: 20px 24px 16px;
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    background: rgba(0,229,255,0.02);
+    align-items: flex-start;
+    border-bottom: none;
   }
-  .card-title-wrap {}
-  .card-name {
-    font-size: 1.4rem;
-    font-weight: 700;
-    letter-spacing: 1px;
-    margin-bottom: 4px;
-  }
-  .card-code {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  .stock-identity {}
+  .stock-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .stock-meta { display: flex; gap: 8px; align-items: center; }
+  .stock-code { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--muted); }
   .market-badge {
-    font-size: 0.65rem;
-    padding: 2px 8px;
-    border-radius: 2px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.62rem; padding: 2px 7px; border-radius: 2px;
+    letter-spacing: 1px; font-family: 'Bebas Neue', sans-serif;
   }
-  .badge-kr { background: rgba(124,58,237,0.2); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
-  .badge-us { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); }
+  .badge-kr { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.25); }
+  .badge-us { background: rgba(0,229,255,0.08); color: var(--accent); border: 1px solid rgba(0,229,255,0.18); }
 
-  .price-wrap { text-align: right; }
+  .price-section { text-align: right; }
   .current-price {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 2rem;
-    font-weight: 600;
-    letter-spacing: -1px;
+    font-size: 2.4rem; font-weight: 600; letter-spacing: -1px;
+    line-height: 1;
   }
   .price-change {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    margin-top: 4px;
+    font-size: 0.85rem; margin-top: 5px;
   }
-  .up { color: var(--green); }
-  .down { color: var(--red); }
+  .up { color: var(--red); }
+  .down { color: #4a9eff; }
+  .flat { color: var(--muted); }
 
-  .metrics-grid {
+  /* ── 가격 요약 바 ── */
+  .price-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    border-bottom: none;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0;
+    grid-template-columns: repeat(5, 1fr);
   }
-  .metric {
-    padding: 20px 24px;
+  .price-item {
+    padding: 10px 16px;
+    border-right: 1px solid var(--border);
+  }
+  .price-item:last-child { border-right: none; }
+  .pi-label { font-size: 0.65rem; color: var(--label); letter-spacing: 1px; margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+  .pi-value { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 500; }
+  .pi-value.up { color: var(--red); }
+  .pi-value.down { color: #4a9eff; }
+
+  /* ── 거래 정보 ── */
+  .trade-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    border-bottom: none;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .trade-item {
+    padding: 10px 16px;
+    border-right: 1px solid var(--border);
+  }
+  .trade-item:last-child { border-right: none; }
+
+  /* ── 투자지표 ── */
+  .metrics-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    border-bottom: none;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .metric-item {
+    padding: 14px 16px;
     border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    transition: background 0.2s;
   }
-  .metric:hover { background: rgba(255,255,255,0.02); }
-  .metric:nth-child(3n) { border-right: none; }
-  .metric-label {
-    font-size: 0.7rem;
-    color: var(--muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .metric-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .metric-value.highlight { color: var(--accent); }
-  .metric-value.na { color: var(--muted); font-size: 0.9rem; }
+  .metric-item:nth-child(4n) { border-right: none; }
+  .metric-item:nth-last-child(-n+4) { border-bottom: none; }
+  .m-label { font-size: 0.65rem; color: var(--label); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
+  .m-value { font-family: 'JetBrains Mono', monospace; font-size: 1.05rem; font-weight: 600; }
+  .m-value.accent { color: var(--accent); }
+  .m-value.green { color: var(--green); }
+  .m-value.na { color: var(--muted); font-size: 0.8rem; font-weight: 400; }
 
+  /* ── 52주 바 ── */
+  .range-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    border-bottom: none;
+    padding: 14px 20px;
+  }
+  .range-label { font-size: 0.65rem; color: var(--label); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+  .range-bar-wrap { display: flex; align-items: center; gap: 12px; }
+  .range-val { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; min-width: 80px; }
+  .range-val.low { color: #4a9eff; text-align: left; }
+  .range-val.high { color: var(--red); text-align: right; }
+  .range-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; position: relative; }
+  .range-fill { position: absolute; height: 100%; background: linear-gradient(90deg, #4a9eff, var(--red)); border-radius: 2px; }
+  .range-dot {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 10px; height: 10px; background: #fff; border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255,255,255,0.5);
+  }
+
+  /* ── 배당 ── */
   .dividend-section {
-    padding: 20px 28px;
-    border-top: 1px solid var(--border);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    border-radius: 0 0 6px 6px;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 0;
-    background: rgba(0,200,150,0.02);
   }
-  .dividend-item { padding: 8px 0; }
-  .dividend-label {
-    font-size: 0.65rem;
-    color: var(--green);
-    opacity: 0.7;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-family: 'JetBrains Mono', monospace;
-    margin-bottom: 6px;
+  .div-item {
+    padding: 14px 16px;
+    border-right: 1px solid var(--border);
   }
-  .dividend-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1rem;
-    color: var(--green);
-    font-weight: 600;
-  }
-  .dividend-value.na { color: var(--muted); font-size: 0.85rem; font-weight: 400; }
+  .div-item:last-child { border-right: none; }
+  .div-label { font-size: 0.65rem; color: var(--green); opacity: 0.7; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
+  .div-value { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 600; color: var(--green); }
+  .div-value.na { color: var(--muted); font-size: 0.8rem; font-weight: 400; }
 
-  /* Footer note */
-  .note {
-    position: relative; z-index: 10;
-    text-align: center;
-    padding: 20px;
-    color: var(--muted);
-    font-size: 0.7rem;
-    letter-spacing: 1px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  @media (max-width: 600px) {
-    header { padding: 20px 20px 0; }
-    .hero { padding: 40px 20px 24px; }
-    .hero h1 { font-size: 2.5rem; }
-    .search-wrap { padding: 0 20px; }
-    .results { padding: 0 20px 60px; }
-    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-    .metric:nth-child(2n) { border-right: none; }
-    .metric:nth-child(3n) { border-right: 1px solid var(--border); }
-    .metric:nth-child(even) { border-right: none; }
+  @media (max-width: 640px) {
+    header { padding: 16px 16px 0; }
+    .search-area { padding: 0 16px; }
+    .main { padding: 0 16px 48px; }
+    .top-section { flex-direction: column; gap: 12px; }
+    .price-section { text-align: left; }
+    .price-bar, .trade-bar { grid-template-columns: repeat(3, 1fr); }
+    .metrics-section { grid-template-columns: repeat(2, 1fr); }
+    .metric-item:nth-child(2n) { border-right: none; }
     .dividend-section { grid-template-columns: 1fr; }
-    .card-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-    .price-wrap { text-align: left; }
+    .div-item { border-right: none; border-bottom: 1px solid var(--border); }
+    .div-item:last-child { border-bottom: none; }
   }
 </style>
 </head>
@@ -374,122 +266,169 @@
   <div class="logo-sub">주식 종목 검색</div>
 </header>
 
-<div class="hero">
-  <h1>FIND YOUR STOCK</h1>
-  <p>한국 · 미국 주식 실시간 데이터 조회</p>
-</div>
-
-<div class="search-wrap">
+<div class="search-area">
   <div class="search-box">
     <div class="search-icon">⌕</div>
-    <input type="text" id="searchInput" placeholder="종목명 또는 코드 입력 (예: 삼성전자, AAPL)" autocomplete="off">
-    <button class="search-btn" onclick="doSearch()">SEARCH</button>
+    <input type="text" id="searchInput" placeholder="종목명 또는 코드 입력  (삼성전자, 현대차, AAPL, TSLA...)" autocomplete="off">
+    <button class="search-btn" onclick="doSearch()">검색</button>
   </div>
 </div>
 
 <div class="examples">
-  예시: 
-  <span onclick="fillSearch('005930.KS')">삼성전자</span>
-  <span onclick="fillSearch('035720.KS')">카카오</span>
+  예시:
+  <span onclick="fillSearch('삼성전자')">삼성전자</span>
+  <span onclick="fillSearch('현대차')">현대차</span>
+  <span onclick="fillSearch('네이버')">네이버</span>
+  <span onclick="fillSearch('카카오')">카카오</span>
   <span onclick="fillSearch('AAPL')">AAPL</span>
   <span onclick="fillSearch('TSLA')">TSLA</span>
   <span onclick="fillSearch('NVDA')">NVDA</span>
 </div>
 
-<div class="results">
+<div class="main">
   <div class="loading" id="loading">
     <div class="dots"><span></span><span></span><span></span></div>
-    <div style="margin-top:12px">데이터를 불러오는 중...</div>
+    <div style="margin-top:10px">데이터를 불러오는 중...</div>
   </div>
   <div class="error-msg" id="errorMsg"></div>
+
   <div class="result-card" id="resultCard">
-    <div class="card-header">
-      <div class="card-title-wrap">
-        <div class="card-name" id="stockName">—</div>
-        <div class="card-code">
-          <span id="stockCode">—</span>
+
+    <!-- 종목명 + 현재가 -->
+    <div class="top-section">
+      <div class="stock-identity">
+        <div class="stock-name" id="stockName">—</div>
+        <div class="stock-meta">
+          <span class="stock-code" id="stockCode">—</span>
           <span class="market-badge" id="marketBadge">—</span>
+          <span class="stock-code" id="marketType" style="color:var(--muted)"></span>
         </div>
       </div>
-      <div class="price-wrap">
+      <div class="price-section">
         <div class="current-price" id="currentPrice">—</div>
         <div class="price-change" id="priceChange">—</div>
       </div>
     </div>
-    <div class="metrics-grid">
-      <div class="metric">
-        <div class="metric-label">PER</div>
-        <div class="metric-value" id="per">—</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">PBR</div>
-        <div class="metric-value" id="pbr">—</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">ROE</div>
-        <div class="metric-value highlight" id="roe">—</div>
-      </div>
-      <div class="metric" style="border-bottom:none">
-        <div class="metric-label">52주 최고</div>
-        <div class="metric-value" id="high52">—</div>
-      </div>
-      <div class="metric" style="border-bottom:none">
-        <div class="metric-label">52주 최저</div>
-        <div class="metric-value" id="low52">—</div>
-      </div>
-      <div class="metric" style="border-bottom:none">
-        <div class="metric-label">시가총액</div>
-        <div class="metric-value" id="marketCap">—</div>
-      </div>
-    </div>
-    <div class="dividend-section">
-      <div class="dividend-item">
-        <div class="dividend-label">배당률</div>
-        <div class="dividend-value" id="divYield">—</div>
-      </div>
-      <div class="dividend-item">
-        <div class="dividend-label">배당금 (연간)</div>
-        <div class="dividend-value" id="divAmount">—</div>
-      </div>
-      <div class="dividend-item">
-        <div class="dividend-label">배당 빈도</div>
-        <div class="dividend-value" id="divFreq">—</div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<div class="note">
-  ⚠ 이 데모는 백엔드 API 연결이 필요합니다. 아래 Python 서버를 실행하세요.<br>
-  데이터 출처: Yahoo Finance (yfinance) — 지연 데이터 포함 가능
+    <!-- 전일/시가/고가/저가/상한가 -->
+    <div class="price-bar">
+      <div class="price-item">
+        <div class="pi-label">전일</div>
+        <div class="pi-value" id="prevClose">—</div>
+      </div>
+      <div class="price-item">
+        <div class="pi-label">시가</div>
+        <div class="pi-value" id="openPrice">—</div>
+      </div>
+      <div class="price-item">
+        <div class="pi-label">고가</div>
+        <div class="pi-value up" id="highPrice">—</div>
+      </div>
+      <div class="price-item">
+        <div class="pi-label">저가</div>
+        <div class="pi-value down" id="lowPrice">—</div>
+      </div>
+      <div class="price-item">
+        <div class="pi-label">상한가 / 하한가</div>
+        <div class="pi-value" id="limitPrice">—</div>
+      </div>
+    </div>
+
+    <!-- 거래량 / 거래대금 / 시가총액 / 상장주식수 -->
+    <div class="trade-bar">
+      <div class="trade-item">
+        <div class="pi-label">거래량</div>
+        <div class="pi-value" id="volume">—</div>
+      </div>
+      <div class="trade-item">
+        <div class="pi-label">거래대금</div>
+        <div class="pi-value" id="tradeValue">—</div>
+      </div>
+      <div class="trade-item">
+        <div class="pi-label">시가총액</div>
+        <div class="pi-value" id="marketCap">—</div>
+      </div>
+      <div class="trade-item">
+        <div class="pi-label">상장주식수</div>
+        <div class="pi-value" id="listedShares">—</div>
+      </div>
+    </div>
+
+    <!-- 투자지표 -->
+    <div class="metrics-section">
+      <div class="metric-item">
+        <div class="m-label">PER</div>
+        <div class="m-value accent" id="per">—</div>
+      </div>
+      <div class="metric-item">
+        <div class="m-label">EPS</div>
+        <div class="m-value" id="eps">—</div>
+      </div>
+      <div class="metric-item">
+        <div class="m-label">PBR</div>
+        <div class="m-value accent" id="pbr">—</div>
+      </div>
+      <div class="metric-item">
+        <div class="m-label">BPS</div>
+        <div class="m-value" id="bps">—</div>
+      </div>
+    </div>
+
+    <!-- 52주 범위 -->
+    <div class="range-section">
+      <div class="range-label">52주 최고 / 최저</div>
+      <div class="range-bar-wrap">
+        <div class="range-val low" id="low52">—</div>
+        <div class="range-track">
+          <div class="range-fill" id="rangeFill" style="left:0;right:0"></div>
+          <div class="range-dot" id="rangeDot" style="left:50%"></div>
+        </div>
+        <div class="range-val high" id="high52">—</div>
+      </div>
+    </div>
+
+    <!-- 배당 -->
+    <div class="dividend-section">
+      <div class="div-item">
+        <div class="div-label">배당수익률</div>
+        <div class="div-value" id="divYield">—</div>
+      </div>
+      <div class="div-item">
+        <div class="div-label">배당금 (연간)</div>
+        <div class="div-value" id="divAmount">—</div>
+      </div>
+      <div class="div-item">
+        <div class="div-label">배당 빈도</div>
+        <div class="div-value" id="divFreq">—</div>
+      </div>
+    </div>
+
+  </div><!-- /result-card -->
 </div>
 
 <script>
   const API_BASE = 'https://stocklens-production.up.railway.app';
 
-  function fillSearch(ticker) {
-    document.getElementById('searchInput').value = ticker;
+  function fillSearch(v) {
+    document.getElementById('searchInput').value = v;
     doSearch();
   }
-
   document.getElementById('searchInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') doSearch();
   });
 
   async function doSearch() {
-    const query = document.getElementById('searchInput').value.trim();
-    if (!query) return;
-
+    const q = document.getElementById('searchInput').value.trim();
+    if (!q) return;
     showLoading(true);
     hideAll();
-
     try {
-      const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}`);
       if (!res.ok) throw new Error((await res.json()).detail || '검색 실패');
       const data = await res.json();
       renderResult(data);
-    } catch (err) {
-      showError(err.message || '서버에 연결할 수 없습니다. Python 백엔드를 실행했는지 확인하세요.');
+    } catch(err) {
+      showError(err.message || '서버에 연결할 수 없습니다.');
     } finally {
       showLoading(false);
     }
@@ -499,105 +438,164 @@
     const isKR = d.market === 'KR';
     const currency = isKR ? '₩' : '$';
 
+    // 종목명 / 코드
     setText('stockName', d.name || d.ticker);
     setText('stockCode', d.ticker);
-    
     const badge = document.getElementById('marketBadge');
     badge.textContent = isKR ? 'KRX' : 'US';
     badge.className = 'market-badge ' + (isKR ? 'badge-kr' : 'badge-us');
+    setText('marketType', d.market_type || '');
 
+    // 현재가
     const price = d.current_price;
-    setText('currentPrice', price != null ? `${currency}${fmtNum(price)}` : 'N/A');
+    setText('currentPrice', price != null ? `${currency}${fmtPrice(price, isKR)}` : 'N/A');
 
+    // 등락
     const chg = d.price_change_pct;
+    const amt = d.price_change_amt;
     const chgEl = document.getElementById('priceChange');
     if (chg != null) {
       const sign = chg >= 0 ? '+' : '';
-      chgEl.textContent = `${sign}${chg.toFixed(2)}% 오늘`;
-      chgEl.className = 'price-change ' + (chg >= 0 ? 'up' : 'down');
+      const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat';
+      const amtStr = amt != null ? ` (${sign}${currency}${fmtPrice(Math.abs(amt), isKR)})` : '';
+      chgEl.textContent = `${sign}${chg.toFixed(2)}%${amtStr}`;
+      chgEl.className = `price-change ${cls}`;
     } else {
-      chgEl.textContent = '변동률 N/A';
-      chgEl.className = 'price-change';
+      chgEl.textContent = '—'; chgEl.className = 'price-change flat';
     }
 
-    setMetric('per', d.per, 'x');
-    setMetric('pbr', d.pbr, 'x');
-    setMetric('roe', d.roe != null ? (d.roe * 100).toFixed(1) : null, '%');
-    setText('high52', d.high_52w != null ? `${currency}${fmtNum(d.high_52w)}` : 'N/A');
-    setText('low52', d.low_52w != null ? `${currency}${fmtNum(d.low_52w)}` : 'N/A');
+    // 가격 바
+    setPriceItem('prevClose', d.prev_close, currency, isKR);
+    setPriceItem('openPrice', d.open_price, currency, isKR);
+    setColorPrice('highPrice', d.high_price, currency, isKR, 'up');
+    setColorPrice('lowPrice', d.low_price, currency, isKR, 'down');
+
+    const limitEl = document.getElementById('limitPrice');
+    if (d.upper_limit && d.lower_limit) {
+      limitEl.innerHTML = `<span style="color:var(--red)">${fmtPrice(d.upper_limit, isKR)}</span> / <span style="color:#4a9eff">${fmtPrice(d.lower_limit, isKR)}</span>`;
+    } else {
+      limitEl.textContent = '—';
+    }
+
+    // 거래량/거래대금/시가총액/상장주식수
+    setText('volume', d.volume != null ? fmtVolume(d.volume) : 'N/A');
+    setText('tradeValue', d.trade_value != null ? fmtTradeValue(d.trade_value, isKR) : 'N/A');
     setText('marketCap', d.market_cap != null ? fmtCap(d.market_cap, currency) : 'N/A');
+    setText('listedShares', d.listed_shares != null ? fmtVolume(d.listed_shares) : 'N/A');
 
-    // Dividends
-    const divYieldEl = document.getElementById('divYield');
-    const divAmtEl = document.getElementById('divAmount');
-    const divFreqEl = document.getElementById('divFreq');
+    // 투자지표
+    setMetric('per', d.per, '배');
+    setMetric('eps', d.eps, isKR ? '원' : '$');
+    setMetric('pbr', d.pbr, '배');
+    setMetric('bps', d.bps, isKR ? '원' : '$');
 
-    if (d.dividend_yield != null && d.dividend_yield > 0) {
-      divYieldEl.textContent = (d.dividend_yield * 100).toFixed(2) + '%';
-      divYieldEl.className = 'dividend-value';
-    } else {
-      divYieldEl.textContent = '무배당';
-      divYieldEl.className = 'dividend-value na';
+    // 52주 바
+    const h52 = d.high_52w, l52 = d.low_52w;
+    document.getElementById('high52').textContent = h52 != null ? `${currency}${fmtPrice(h52, isKR)}` : '—';
+    document.getElementById('low52').textContent = l52 != null ? `${currency}${fmtPrice(l52, isKR)}` : '—';
+    if (h52 && l52 && price && h52 > l52) {
+      const pct = ((price - l52) / (h52 - l52)) * 100;
+      const clamp = Math.min(100, Math.max(0, pct));
+      document.getElementById('rangeFill').style.cssText = `left:0; width:${clamp}%`;
+      document.getElementById('rangeDot').style.left = clamp + '%';
     }
 
+    // 배당
+    const divY = d.dividend_yield;
+    const divYEl = document.getElementById('divYield');
+    if (divY != null && divY > 0) {
+      // KIS는 % 단위로 올 수도 있고 소수로 올 수도 있음
+      const pct = divY > 1 ? divY : divY * 100;
+      divYEl.textContent = pct.toFixed(2) + '%';
+      divYEl.className = 'div-value';
+    } else {
+      divYEl.textContent = '정보 없음';
+      divYEl.className = 'div-value na';
+    }
+    const divA = document.getElementById('divAmount');
     if (d.dividend_rate != null && d.dividend_rate > 0) {
-      divAmtEl.textContent = `${currency}${fmtNum(d.dividend_rate)}`;
-      divAmtEl.className = 'dividend-value';
+      divA.textContent = `${currency}${fmtPrice(d.dividend_rate, isKR)}`;
+      divA.className = 'div-value';
     } else {
-      divAmtEl.textContent = '—';
-      divAmtEl.className = 'dividend-value na';
+      divA.textContent = '—'; divA.className = 'div-value na';
     }
-
+    const divF = document.getElementById('divFreq');
     if (d.dividend_frequency) {
-      divFreqEl.textContent = d.dividend_frequency;
-      divFreqEl.className = 'dividend-value';
+      divF.textContent = d.dividend_frequency; divF.className = 'div-value';
     } else {
-      divFreqEl.textContent = '—';
-      divFreqEl.className = 'dividend-value na';
+      divF.textContent = '—'; divF.className = 'div-value na';
     }
 
     document.getElementById('resultCard').style.display = 'block';
   }
 
-  function setText(id, val) {
+  function setText(id, val) { document.getElementById(id).textContent = val ?? '—'; }
+
+  function setPriceItem(id, val, currency, isKR) {
     const el = document.getElementById(id);
-    el.textContent = val ?? 'N/A';
+    el.textContent = val != null ? `${currency}${fmtPrice(val, isKR)}` : '—';
+    el.className = 'pi-value';
   }
 
-  function setMetric(id, val, suffix = '') {
+  function setColorPrice(id, val, currency, isKR, cls) {
+    const el = document.getElementById(id);
+    el.textContent = val != null ? `${currency}${fmtPrice(val, isKR)}` : '—';
+    el.className = `pi-value ${cls}`;
+  }
+
+  function setMetric(id, val, suffix) {
     const el = document.getElementById(id);
     if (val != null) {
-      el.textContent = (typeof val === 'number' ? val.toFixed(2) : val) + suffix;
-      el.className = 'metric-value';
+      el.textContent = fmtNum(val) + suffix;
+      el.className = el.className.replace(' na', '');
     } else {
       el.textContent = 'N/A';
-      el.className = 'metric-value na';
+      if (!el.className.includes('na')) el.className += ' na';
     }
   }
 
+  function fmtPrice(n, isKR) {
+    if (n == null) return '—';
+    if (isKR) return n.toLocaleString('ko-KR', { maximumFractionDigits: 0 });
+    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   function fmtNum(n) {
-    return n >= 1000 ? n.toLocaleString('ko-KR', { maximumFractionDigits: 0 }) : n.toFixed(2);
+    if (n == null) return '—';
+    return n.toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+  }
+
+  function fmtVolume(n) {
+    if (n == null) return '—';
+    if (n >= 1e8) return (n / 1e8).toFixed(1) + '억주';
+    if (n >= 1e4) return (n / 1e4).toFixed(1) + '만주';
+    return n.toLocaleString();
+  }
+
+  function fmtTradeValue(n, isKR) {
+    if (n == null) return '—';
+    if (isKR) {
+      // 백만 단위로 전달됨
+      const won = n * 1e6;
+      if (won >= 1e12) return (won / 1e12).toFixed(1) + '조';
+      if (won >= 1e8) return (won / 1e8).toFixed(0) + '억';
+      return won.toLocaleString();
+    }
+    if (n >= 1e9) return '$' + (n / 1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+    return '$' + n.toLocaleString();
   }
 
   function fmtCap(cap, currency) {
-    if (cap >= 1e12) return `${currency}${(cap/1e12).toFixed(1)}조`;
-    if (cap >= 1e8) return `${currency}${(cap/1e8).toFixed(1)}억`;
+    if (cap >= 1e12) return `${(cap/1e12).toFixed(1)}조`;
+    if (cap >= 1e8) return `${(cap/1e8).toFixed(0)}억`;
     if (cap >= 1e6) return `${currency}${(cap/1e6).toFixed(1)}M`;
-    return `${currency}${cap.toLocaleString()}`;
+    return cap.toLocaleString();
   }
 
-  function showLoading(show) {
-    document.getElementById('loading').style.display = show ? 'block' : 'none';
-  }
-  function showError(msg) {
-    const el = document.getElementById('errorMsg');
-    el.textContent = '⚠ ' + msg;
-    el.style.display = 'block';
-  }
-  function hideAll() {
-    document.getElementById('resultCard').style.display = 'none';
-    document.getElementById('errorMsg').style.display = 'none';
-  }
+  function showLoading(show) { document.getElementById('loading').style.display = show ? 'block' : 'none'; }
+  function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = '⚠ ' + msg; el.style.display = 'block'; }
+  function hideAll() { document.getElementById('resultCard').style.display = 'none'; document.getElementById('errorMsg').style.display = 'none'; }
 </script>
 </body>
 </html>

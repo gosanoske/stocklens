@@ -1,6 +1,6 @@
 """
 StockLens 백엔드 API - 한국투자증권 KIS API 버전
-KRX 전체 종목 3203개 한글 검색 지원
+KRX 전체 종목 한글 검색 지원
 """
 
 import os
@@ -3229,18 +3229,19 @@ KR_TICKER_MAP = {
     "힘스": "238490"
 }
 
-# 별칭 매핑 (한글명이 없는 종목 추가)
+# 별칭 매핑 (KRX에 영문으로만 등록된 종목)
 KR_ALIAS_MAP = {
     "네이버": "035420",
-    "넥슨": "225130",
-    "크래프톤": "259960",
     "카카오뱅크": "323410",
     "카카오페이": "377300",
+    "크래프톤": "259960",
+    "넥슨": "225130",
+    "하이브": "352820",
+    "카카오게임즈": "293490",
     "쿠팡": "358200",
 }
-
-# 별칭을 메인 맵에 병합
 KR_TICKER_MAP.update({k.lower(): v for k, v in KR_ALIAS_MAP.items()})
+
 
 def get_access_token():
     if _token_cache["access_token"]:
@@ -3278,14 +3279,20 @@ def normalize_ticker(q: str) -> str:
     q = q.strip()
     if q.upper().endswith(".KS") or q.upper().endswith(".KQ"):
         return q[:6]
-    # 한글 종목명 검색
     lower = q.lower()
     if lower in KR_TICKER_MAP:
         return KR_TICKER_MAP[lower]
-    # 숫자 6자리
     if q.isdigit() and len(q) == 6:
         return q
     return q.upper()
+
+
+def safe_float(val, default=None):
+    try:
+        f = float(val)
+        return f if f != 0 else default
+    except:
+        return default
 
 
 def get_kr_stock(ticker: str) -> dict:
@@ -3301,65 +3308,101 @@ def get_kr_stock(ticker: str) -> dict:
     if data.get("rt_cd") != "0":
         raise HTTPException(status_code=404, detail=data.get("msg1", "조회 실패"))
     o = data["output"]
-    price = float(o.get("stck_prpr", 0))
-    prev_close = float(o.get("stck_sdpr", 0))
+
+    price = safe_float(o.get("stck_prpr"), 0)
+    prev_close = safe_float(o.get("stck_sdpr"), 0)
     change_pct = ((price - prev_close) / prev_close * 100) if prev_close else None
+    change_amt = (price - prev_close) if prev_close else None
+
+    # 상한가/하한가 계산 (전일가 기준 ±30%)
+    upper_limit = round(prev_close * 1.3 / 100) * 100 if prev_close else None
+    lower_limit = round(prev_close * 0.7 / 100) * 100 if prev_close else None
+
     return {
         "ticker": ticker,
         "name": o.get("hts_kor_isnm", ticker),
         "market": "KR",
+        "market_type": o.get("bstp_kor_isnm", ""),   # 업종명
         "current_price": price,
         "price_change_pct": change_pct,
-        "per": float(o.get("per", 0)) or None,
-        "pbr": float(o.get("pbr", 0)) or None,
+        "price_change_amt": change_amt,
+        "open_price": safe_float(o.get("stck_oprc")),
+        "high_price": safe_float(o.get("stck_hgpr")),
+        "low_price": safe_float(o.get("stck_lwpr")),
+        "prev_close": prev_close,
+        "upper_limit": upper_limit,
+        "lower_limit": lower_limit,
+        "volume": safe_float(o.get("acml_vol")),           # 거래량
+        "trade_value": safe_float(o.get("acml_tr_pbmn")),  # 거래대금(백만)
+        "per": safe_float(o.get("per")),
+        "pbr": safe_float(o.get("pbr")),
+        "eps": safe_float(o.get("eps")),
+        "bps": safe_float(o.get("bps")),
         "roe": None,
-        "high_52w": float(o.get("d250_hgpr", 0)) or None,
-        "low_52w": float(o.get("d250_lwpr", 0)) or None,
+        "high_52w": safe_float(o.get("d250_hgpr")),
+        "low_52w": safe_float(o.get("d250_lwpr")),
         "market_cap": int(o.get("hts_avls", 0)) * 100000000 or None,
-        "dividend_yield": None,
+        "listed_shares": safe_float(o.get("lstn_stcn")),
+        "dividend_yield": safe_float(o.get("pbr")),  # KIS 현재가 API에서 배당률 미제공
         "dividend_rate": None,
         "dividend_frequency": None,
     }
 
 
 def get_us_stock(ticker: str) -> dict:
-    # 거래소 자동 판별
     nasdaq = ["AAPL","TSLA","NVDA","MSFT","AMZN","GOOGL","GOOG","META",
               "NFLX","INTC","AMD","QCOM","AVGO","TXN","MU","AMAT",
               "LRCX","KLAC","MRVL","ADI","ASML","ADBE","CRM","ORCL",
               "PYPL","ABNB","UBER","LYFT","SNAP","SPOT","ZM","DOCU",
-              "COIN","HOOD","RBLX","U","DKNG","CHWY","ETSY","EBAY"]
+              "COIN","HOOD","RBLX","DKNG","CHWY","ETSY","EBAY","COST",
+              "SBUX","MDLZ","MNST","BIIB","GILD","REGN","VRTX","ILMN"]
     excd = "NAS" if ticker in nasdaq else "NYS"
     url = f"{KIS_BASE_URL}/uapi/overseas-price/v1/quotations/price"
     params = {"AUTH": "", "EXCD": excd, "SYMB": ticker}
     res = requests.get(url, headers=kis_headers("HHDFS00000300"), params=params)
-    if res.status_code != 200:
-        # NYS 실패시 NAS 재시도
-        if excd == "NYS":
-            params["EXCD"] = "NAS"
-            res = requests.get(url, headers=kis_headers("HHDFS00000300"), params=params)
+    if res.status_code != 200 or res.json().get("rt_cd") != "0":
+        # 거래소 바꿔서 재시도
+        other = "NAS" if excd == "NYS" else "NYS"
+        params["EXCD"] = other
+        res = requests.get(url, headers=kis_headers("HHDFS00000300"), params=params)
         if res.status_code != 200:
             raise HTTPException(status_code=404, detail=f"종목을 찾을 수 없습니다: {ticker}")
     data = res.json()
     if data.get("rt_cd") != "0":
         raise HTTPException(status_code=404, detail=data.get("msg1", "조회 실패"))
     o = data["output"]
-    price = float(o.get("last", 0))
-    prev_close = float(o.get("base", 0))
+
+    price = safe_float(o.get("last"), 0)
+    prev_close = safe_float(o.get("base"), 0)
     change_pct = ((price - prev_close) / prev_close * 100) if prev_close else None
+    change_amt = (price - prev_close) if prev_close else None
+
     return {
         "ticker": ticker,
         "name": o.get("rsym", ticker),
         "market": "US",
+        "market_type": params["EXCD"],
         "current_price": price,
         "price_change_pct": change_pct,
-        "per": float(o.get("perx", 0)) or None,
-        "pbr": float(o.get("pbrx", 0)) or None,
+        "price_change_amt": change_amt,
+        "open_price": safe_float(o.get("open")),
+        "high_price": safe_float(o.get("high")),
+        "low_price": safe_float(o.get("low")),
+        "prev_close": prev_close,
+        "upper_limit": None,
+        "lower_limit": None,
+        "volume": safe_float(o.get("tvol")),
+        "trade_value": safe_float(o.get("tamt")),
+        "per": safe_float(o.get("perx")),
+        "pbr": safe_float(o.get("pbrx")),
+        "eps": safe_float(o.get("epsx")),
+        "bps": safe_float(o.get("bpsx")),
         "roe": None,
-        "high_52w": float(o.get("h52p", 0)) or None,
-        "low_52w": float(o.get("l52p", 0)) or None,
+        "high_52w": safe_float(o.get("h52p")),
+        "low_52w": safe_float(o.get("l52p")),
         "market_cap": None,
-        "dividend_yield": float(o.get("dyld", 0)) / 100 or None,
+        "listed_shares": None,
+        "dividend_yield": safe_float(o.get("dyld")),
         "dividend_rate": None,
         "dividend_frequency": None,
     }
