@@ -3435,29 +3435,36 @@ def search_stock(q: str):
 def get_chart(q: str, period: str = "1M"):
     """
     주식 차트 데이터 조회
-    period: 1D(당일 분봉), 1W(1주), 1M(1개월), 3M(3개월), 1Y(1년)
+    period: 5M(5분봉), 10M(10분봉), 1H(60분봉),
+            1W(1주일봉), 1M(1개월일봉), 3M(3개월일봉),
+            1Y(1년일봉), 10Y(10년월봉)
     """
     if not q:
         raise HTTPException(status_code=400, detail="검색어를 입력하세요.")
 
     ticker = normalize_ticker(q)
 
-    from datetime import datetime, timedelta
-    today = datetime.today()
+    from datetime import datetime, timedelta, timezone
+    KST = timezone(timedelta(hours=9))
+    today = datetime.now(KST)
 
     try:
-        # 1D는 분봉으로 별도 처리
-        if period == "1D":
+        # 분봉/시간봉
+        minute_map = {"5M": "5", "10M": "10", "1H": "60"}
+        if period in minute_map:
+            minute = minute_map[period]
             if is_korean(ticker):
-                return get_kr_minute_chart(ticker, "5")  # 5분봉
+                return get_kr_minute_chart(ticker, minute)
             else:
-                return get_us_minute_chart(ticker, "5")
+                return get_us_minute_chart(ticker, minute)
 
+        # 일봉/주봉/월봉
         period_map = {
-            "1W": (today - timedelta(weeks=1),  "D"),
-            "1M": (today - timedelta(days=30),  "D"),
-            "3M": (today - timedelta(days=90),  "D"),
-            "1Y": (today - timedelta(days=365), "W"),
+            "1W":  (today - timedelta(weeks=1),    "D"),
+            "1M":  (today - timedelta(days=30),    "D"),
+            "3M":  (today - timedelta(days=90),    "D"),
+            "1Y":  (today - timedelta(days=365),   "W"),
+            "10Y": (today - timedelta(days=3650),  "M"),
         }
         start_dt, div_code = period_map.get(period, period_map["1M"])
         start_str = start_dt.strftime("%Y%m%d")
@@ -3476,9 +3483,8 @@ def get_chart(q: str, period: str = "1M"):
 
 def get_kr_minute_chart(ticker: str, minute: str = "5") -> dict:
     """한국 주식 분봉 차트 (당일)"""
-    from datetime import datetime, timezone, timedelta
-    KST = timezone(timedelta(hours=9))
-    now = datetime.now(KST)
+    from datetime import datetime
+    now = datetime.today()
     end_time = now.strftime("%H%M%S")
 
     url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
