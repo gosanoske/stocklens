@@ -3604,64 +3604,68 @@ def aggregate_to_hourly(minute_result: dict) -> dict:
     }
 
 
-def get_kr_minute_chart(ticker: str, minute: str = "5") -> dict:
-    """한국 주식 분봉/시간봉 차트 (당일)"""
+def get_kr_minute_chart(ticker: str, minute: str = "5", target_points: int = 78) -> dict:
+    """
+    한국 주식 5분봉 차트 - 여러 번 호출해서 충분한 데이터 수집
+    target_points: 목표 5분봉 개수 (기본 78개 = 하루 전체 6.5시간 * 12개)
+    """
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
     now = datetime.now(KST)
-    end_time = now.strftime("%H%M%S")
 
-    # 60분봉은 별도 처리 (당일 전체 시간봉)
-    if minute == "60":
-        url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
+    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
+    all_rows = []
+    current_time = now.strftime("%H%M%S")
+
+    # KIS API는 한 번에 최대 30개 반환 → 여러 번 호출
+    for _ in range(5):  # 최대 5번 호출 (5 * 30 = 150개)
         params = {
             "FID_ETC_CLS_CODE": "",
             "FID_COND_MRKT_DIV_CODE": "J",
             "FID_INPUT_ISCD": ticker,
-            "FID_INPUT_HOUR_1": end_time,
+            "FID_INPUT_HOUR_1": current_time,
             "FID_PW_DATA_INCU_YN": "Y",
-            "FID_HOUR_CLS_CODE": "60",
+            "FID_HOUR_CLS_CODE": "5",  # 항상 5분봉으로 요청
         }
         res = requests.get(url, headers=kis_headers("FHKST03010200"), params=params)
         if res.status_code != 200:
-            raise HTTPException(status_code=404, detail="시간봉 데이터 조회 실패")
+            break
         data = res.json()
         if data.get("rt_cd") != "0":
-            raise HTTPException(status_code=404, detail=data.get("msg1", "조회 실패"))
+            break
+
         output = data.get("output2", [])
-        result = []
-        for row in reversed(output):
-            t = row.get("stck_cntg_hour", "")
-            result.append({
-                "date": f"{t[:2]}:{t[2:4]}" if len(t) >= 4 else t,
-                "open": safe_float(row.get("stck_oprc")),
-                "high": safe_float(row.get("stck_hgpr")),
-                "low": safe_float(row.get("stck_lwpr")),
-                "close": safe_float(row.get("stck_prpr")),
-                "volume": safe_float(row.get("cntg_vol")),
-            })
-        return {"ticker": ticker, "market": "KR", "data": result, "type": "minute", "interval": "60"}
+        if not output:
+            break
 
-    # 5분봉 / 10분봉
-    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
-    params = {
-        "FID_ETC_CLS_CODE": "",
-        "FID_COND_MRKT_DIV_CODE": "J",
-        "FID_INPUT_ISCD": ticker,
-        "FID_INPUT_HOUR_1": end_time,
-        "FID_PW_DATA_INCU_YN": "Y",
-        "FID_HOUR_CLS_CODE": minute,
-    }
-    res = requests.get(url, headers=kis_headers("FHKST03010200"), params=params)
-    if res.status_code != 200:
-        raise HTTPException(status_code=404, detail="분봉 데이터 조회 실패")
-    data = res.json()
-    if data.get("rt_cd") != "0":
-        raise HTTPException(status_code=404, detail=data.get("msg1", "조회 실패"))
+        all_rows.extend(output)
 
-    output = data.get("output2", [])
+        # 마지막 데이터의 시간을 다음 호출 기준으로
+        last_time = output[-1].get("stck_cntg_hour", "")
+        if not last_time or last_time <= "090000":
+            break
+        current_time = last_time
+
+        if len(all_rows) >= target_points:
+            break
+
+    # 중복 제거 및 시간순 정렬
+    seen = set()
+    unique_rows = []
+    for row in all_rows:
+        t = row.get("stck_cntg_hour", "")
+        if t not in seen:
+            seen.add(t)
+            unique_rows.append(row)
+
+    # 시간 오름차순 정렬 (오래된 것 → 최신)
+    unique_rows.sort(key=lambda r: r.get("stck_cntg_hour", ""))
+
+    # 장 시작(09:00) 이후 데이터만
+    unique_rows = [r for r in unique_rows if r.get("stck_cntg_hour", "") >= "090000"]
+
     result = []
-    for row in reversed(output):
+    for row in unique_rows:
         t = row.get("stck_cntg_hour", "")
         result.append({
             "date": f"{t[:2]}:{t[2:4]}" if len(t) >= 4 else t,
@@ -3671,7 +3675,8 @@ def get_kr_minute_chart(ticker: str, minute: str = "5") -> dict:
             "close": safe_float(row.get("stck_prpr")),
             "volume": safe_float(row.get("cntg_vol")),
         })
-    return {"ticker": ticker, "market": "KR", "data": result, "type": "minute", "interval": minute}
+
+    return {"ticker": ticker, "market": "KR", "data": result, "type": "minute", "interval": "5"}
 
 
 def get_us_minute_chart(ticker: str, minute: str = "5") -> dict:
