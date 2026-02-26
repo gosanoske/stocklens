@@ -42,20 +42,29 @@
     }
 
     const isMinute = json && json.type === 'minute';
+    const interval = json && json.interval ? parseInt(json.interval) : 5;
     const labels = data.map(d => {
       const s = String(d.date);
       if (isMinute) {
-        // 분봉: "HHMMSS" → "HH:MM" 또는 이미 "HH:MM" 형태
-        if (s.length === 6) return s.slice(0,2) + ':' + s.slice(2,4);
-        return s; // 이미 HH:MM 형태
+        // 이미 "HH:MM" 형태로 서버에서 가공됨
+        return s;
       }
       // 일봉/주봉/월봉: "YYYYMMDD" → "YY.MM.DD"
       if (s.length === 8) return `${s.slice(2,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
       return s;
     });
 
-    // 기간별 x축 틱 개수 설정
-    const tickLimit = isMinute ? 8 : currentPeriod === '10Y' ? 6 : currentPeriod === '1Y' ? 8 : 6;
+    // 기간/단위별 x축 틱 개수
+    let tickLimit = 6;
+    if (isMinute) {
+      if (interval === 60) tickLimit = 8;       // 1H: 시간 단위라 적게
+      else if (interval === 10) tickLimit = 8;  // 10M
+      else tickLimit = 10;                      // 5M: 촘촘하게
+    } else {
+      if (currentPeriod === '10Y') tickLimit = 6;
+      else if (currentPeriod === '1Y') tickLimit = 8;
+      else tickLimit = 6;
+    }
     const closes = data.map(d => d.close);
     const first = closes[0];
     const last = closes[closes.length - 1];
@@ -831,20 +840,29 @@
     }
 
     const isMinute = json && json.type === 'minute';
+    const interval = json && json.interval ? parseInt(json.interval) : 5;
     const labels = data.map(d => {
       const s = String(d.date);
       if (isMinute) {
-        // 분봉: "HHMMSS" → "HH:MM" 또는 이미 "HH:MM" 형태
-        if (s.length === 6) return s.slice(0,2) + ':' + s.slice(2,4);
-        return s; // 이미 HH:MM 형태
+        // 이미 "HH:MM" 형태로 서버에서 가공됨
+        return s;
       }
       // 일봉/주봉/월봉: "YYYYMMDD" → "YY.MM.DD"
       if (s.length === 8) return `${s.slice(2,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
       return s;
     });
 
-    // 기간별 x축 틱 개수 설정
-    const tickLimit = isMinute ? 8 : currentPeriod === '10Y' ? 6 : currentPeriod === '1Y' ? 8 : 6;
+    // 기간/단위별 x축 틱 개수
+    let tickLimit = 6;
+    if (isMinute) {
+      if (interval === 60) tickLimit = 8;       // 1H: 시간 단위라 적게
+      else if (interval === 10) tickLimit = 8;  // 10M
+      else tickLimit = 10;                      // 5M: 촘촘하게
+    } else {
+      if (currentPeriod === '10Y') tickLimit = 6;
+      else if (currentPeriod === '1Y') tickLimit = 8;
+      else tickLimit = 6;
+    }
     const closes = data.map(d => d.close);
     const first = closes[0];
     const last = closes[closes.length - 1];

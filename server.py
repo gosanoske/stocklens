@@ -3492,12 +3492,44 @@ def get_chart(q: str, period: str = "1M"):
 
 
 def get_kr_minute_chart(ticker: str, minute: str = "5") -> dict:
-    """한국 주식 분봉 차트 (당일)"""
+    """한국 주식 분봉/시간봉 차트 (당일)"""
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
     now = datetime.now(KST)
     end_time = now.strftime("%H%M%S")
 
+    # 60분봉은 별도 처리 (당일 전체 시간봉)
+    if minute == "60":
+        url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
+        params = {
+            "FID_ETC_CLS_CODE": "",
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": ticker,
+            "FID_INPUT_HOUR_1": end_time,
+            "FID_PW_DATA_INCU_YN": "Y",
+            "FID_HOUR_CLS_CODE": "60",
+        }
+        res = requests.get(url, headers=kis_headers("FHKST03010200"), params=params)
+        if res.status_code != 200:
+            raise HTTPException(status_code=404, detail="시간봉 데이터 조회 실패")
+        data = res.json()
+        if data.get("rt_cd") != "0":
+            raise HTTPException(status_code=404, detail=data.get("msg1", "조회 실패"))
+        output = data.get("output2", [])
+        result = []
+        for row in reversed(output):
+            t = row.get("stck_cntg_hour", "")
+            result.append({
+                "date": f"{t[:2]}:{t[2:4]}" if len(t) >= 4 else t,
+                "open": safe_float(row.get("stck_oprc")),
+                "high": safe_float(row.get("stck_hgpr")),
+                "low": safe_float(row.get("stck_lwpr")),
+                "close": safe_float(row.get("stck_prpr")),
+                "volume": safe_float(row.get("cntg_vol")),
+            })
+        return {"ticker": ticker, "market": "KR", "data": result, "type": "minute", "interval": "60"}
+
+    # 5분봉 / 10분봉
     url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
     params = {
         "FID_ETC_CLS_CODE": "",
@@ -3505,7 +3537,7 @@ def get_kr_minute_chart(ticker: str, minute: str = "5") -> dict:
         "FID_INPUT_ISCD": ticker,
         "FID_INPUT_HOUR_1": end_time,
         "FID_PW_DATA_INCU_YN": "Y",
-        "FID_HOUR_CLS_CODE": minute,  # 분 단위
+        "FID_HOUR_CLS_CODE": minute,
     }
     res = requests.get(url, headers=kis_headers("FHKST03010200"), params=params)
     if res.status_code != 200:
@@ -3526,7 +3558,7 @@ def get_kr_minute_chart(ticker: str, minute: str = "5") -> dict:
             "close": safe_float(row.get("stck_prpr")),
             "volume": safe_float(row.get("cntg_vol")),
         })
-    return {"ticker": ticker, "market": "KR", "data": result, "type": "minute"}
+    return {"ticker": ticker, "market": "KR", "data": result, "type": "minute", "interval": minute}
 
 
 def get_us_minute_chart(ticker: str, minute: str = "5") -> dict:
