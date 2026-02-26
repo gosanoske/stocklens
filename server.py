@@ -3476,8 +3476,9 @@ def get_chart(q: str, period: str = "1M"):
 
 def get_kr_minute_chart(ticker: str, minute: str = "5") -> dict:
     """한국 주식 분봉 차트 (당일)"""
-    from datetime import datetime
-    now = datetime.today()
+    from datetime import datetime, timezone, timedelta
+    KST = timezone(timedelta(hours=9))
+    now = datetime.now(KST)
     end_time = now.strftime("%H%M%S")
 
     url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
