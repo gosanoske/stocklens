@@ -3460,13 +3460,18 @@ def get_chart(q: str, period: str = "1M"):
 
     try:
         # 분봉/시간봉
-        minute_map = {"5M": "5", "10M": "10", "1H": "60"}
+        minute_map = {"5M": "5", "10M": "10", "30M": "30", "1H": "30"}
         if period in minute_map:
             minute = minute_map[period]
             if is_korean(ticker):
-                return get_kr_minute_chart(ticker, minute)
+                result = get_kr_minute_chart(ticker, minute)
             else:
-                return get_us_minute_chart(ticker, minute)
+                result = get_us_minute_chart(ticker, minute)
+
+            # 1H는 30분봉 데이터를 1시간 단위로 합산
+            if period == "1H":
+                result = aggregate_to_hourly(result)
+            return result
 
         # 일봉/주봉/월봉
         period_map = {
@@ -3489,6 +3494,53 @@ def get_chart(q: str, period: str = "1M"):
     except Exception as e:
         _token_cache["access_token"] = None
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def aggregate_to_hourly(minute_result: dict) -> dict:
+    """30분봉 데이터를 1시간봉으로 합산"""
+    data = minute_result.get("data", [])
+    if not data:
+        return minute_result
+
+    hourly = {}
+    for row in data:
+        time_str = row.get("date", "")  # "HH:MM" 형태
+        try:
+            hour = time_str.split(":")[0]  # "HH"
+            hour_key = f"{hour}:00"
+        except:
+            continue
+
+        if hour_key not in hourly:
+            hourly[hour_key] = {
+                "date": hour_key,
+                "open": row["open"],
+                "high": row["high"] or 0,
+                "low": row["low"] or float("inf"),
+                "close": row["close"],
+                "volume": row["volume"] or 0,
+            }
+        else:
+            c = hourly[hour_key]
+            if row["high"] and row["high"] > c["high"]:
+                c["high"] = row["high"]
+            if row["low"] and row["low"] < c["low"]:
+                c["low"] = row["low"]
+            c["close"] = row["close"]  # 마지막 종가
+            c["volume"] = (c["volume"] or 0) + (row["volume"] or 0)
+
+    result = list(hourly.values())
+    # inf 정리
+    for r in result:
+        if r["low"] == float("inf"):
+            r["low"] = None
+
+    return {
+        **minute_result,
+        "data": result,
+        "type": "minute",
+        "interval": "60",
+    }
 
 
 def get_kr_minute_chart(ticker: str, minute: str = "5") -> dict:

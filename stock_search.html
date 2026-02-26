@@ -57,7 +57,8 @@
     // 기간/단위별 x축 틱 개수
     let tickLimit = 6;
     if (isMinute) {
-      if (interval === 60) tickLimit = 8;       // 1H: 시간 단위라 적게
+      if (interval === 60) tickLimit = 6;        // 1H
+      else if (interval === 30) tickLimit = 8;  // 30M
       else if (interval === 10) tickLimit = 8;  // 10M
       else tickLimit = 10;                      // 5M: 촘촘하게
     } else {
@@ -576,6 +577,7 @@
         <div class="period-tabs">
           <button class="period-btn" onclick="loadChart('5M')">5M</button>
           <button class="period-btn" onclick="loadChart('10M')">10M</button>
+          <button class="period-btn" onclick="loadChart('30M')">30M</button>
           <button class="period-btn" onclick="loadChart('1H')">1H</button>
           <button class="period-btn" onclick="loadChart('1W')">1W</button>
           <button class="period-btn active" onclick="loadChart('1M')">1M</button>
@@ -855,7 +857,8 @@
     // 기간/단위별 x축 틱 개수
     let tickLimit = 6;
     if (isMinute) {
-      if (interval === 60) tickLimit = 8;       // 1H: 시간 단위라 적게
+      if (interval === 60) tickLimit = 6;        // 1H
+      else if (interval === 30) tickLimit = 8;  // 30M
       else if (interval === 10) tickLimit = 8;  // 10M
       else tickLimit = 10;                      // 5M: 촘촘하게
     } else {
