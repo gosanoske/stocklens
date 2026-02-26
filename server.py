@@ -3460,7 +3460,7 @@ def get_chart(q: str, period: str = "1M"):
 
     try:
         # 분봉/시간봉
-        minute_map = {"5M": "5", "10M": "10", "30M": "30", "1H": "30"}
+        minute_map = {"5M": "5", "10M": "5", "30M": "5", "1H": "5"}
         if period in minute_map:
             minute = minute_map[period]
             if is_korean(ticker):
@@ -3468,8 +3468,12 @@ def get_chart(q: str, period: str = "1M"):
             else:
                 result = get_us_minute_chart(ticker, minute)
 
-            # 1H는 30분봉 데이터를 1시간 단위로 합산
-            if period == "1H":
+            # 분봉 합산 처리
+            if period == "10M":
+                result = aggregate_minutes(result, 10)
+            elif period == "30M":
+                result = aggregate_minutes(result, 30)
+            elif period == "1H":
                 result = aggregate_to_hourly(result)
             return result
 
@@ -3494,6 +3498,63 @@ def get_chart(q: str, period: str = "1M"):
     except Exception as e:
         _token_cache["access_token"] = None
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def aggregate_minutes(minute_result: dict, interval: int) -> dict:
+    """5분봉 데이터를 N분 단위로 합산 (10M, 30M 등)"""
+    data = minute_result.get("data", [])
+    if not data:
+        return minute_result
+
+    aggregated = []
+    bucket = None
+
+    for row in data:
+        time_str = row.get("date", "")  # "HH:MM"
+        try:
+            h, m = map(int, time_str.split(":"))
+            total_min = h * 60 + m
+            # 해당 봉이 속하는 구간 시작 시간 계산
+            bucket_start = (total_min // interval) * interval
+            bucket_h = bucket_start // 60
+            bucket_m = bucket_start % 60
+            bucket_key = f"{bucket_h:02d}:{bucket_m:02d}"
+        except:
+            continue
+
+        if bucket is None or bucket["date"] != bucket_key:
+            if bucket:
+                aggregated.append(bucket)
+            bucket = {
+                "date": bucket_key,
+                "open": row["open"],
+                "high": row["high"] or 0,
+                "low": row["low"] or float("inf"),
+                "close": row["close"],
+                "volume": row["volume"] or 0,
+            }
+        else:
+            if row["high"] and row["high"] > bucket["high"]:
+                bucket["high"] = row["high"]
+            if row["low"] and row["low"] < bucket["low"]:
+                bucket["low"] = row["low"]
+            bucket["close"] = row["close"]
+            bucket["volume"] = (bucket["volume"] or 0) + (row["volume"] or 0)
+
+    if bucket:
+        aggregated.append(bucket)
+
+    # inf 정리
+    for r in aggregated:
+        if r["low"] == float("inf"):
+            r["low"] = None
+
+    return {
+        **minute_result,
+        "data": aggregated,
+        "type": "minute",
+        "interval": str(interval),
+    }
 
 
 def aggregate_to_hourly(minute_result: dict) -> dict:
