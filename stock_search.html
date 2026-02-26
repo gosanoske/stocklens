@@ -27,13 +27,13 @@
       const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(currentChartTicker)}&period=${period}`);
       if (!res.ok) throw new Error('차트 데이터 없음');
       const json = await res.json();
-      renderChart(json.data, json.market);
+      renderChart(json.data, json.market, json);
     } catch(e) {
       document.getElementById('chartLoading').textContent = '차트 데이터를 불러올 수 없습니다.';
     }
   }
 
-  function renderChart(data, market) {
+  function renderChart(data, market, json = {}) {
     document.getElementById('chartLoading').style.display = 'none';
     if (!data || data.length === 0) {
       document.getElementById('chartLoading').textContent = '데이터 없음';
@@ -41,10 +41,11 @@
       return;
     }
 
+    const isMinute = json && json.type === 'minute';
     const labels = data.map(d => {
       const s = String(d.date);
       if (s.length === 8) return `${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
-      return s;
+      return s; // HH:MM 분봉은 그대로
     });
     const closes = data.map(d => d.close);
     const first = closes[0];
@@ -555,7 +556,7 @@
       <div class="chart-header">
         <div class="chart-title">주가 차트</div>
         <div class="period-tabs">
-          <button class="period-btn" onclick="loadChart('1D')">1W</button>
+          <button class="period-btn" onclick="loadChart('1D')">1D</button>
           <button class="period-btn" onclick="loadChart('1W')">1W</button>
           <button class="period-btn active" onclick="loadChart('1M')">1M</button>
           <button class="period-btn" onclick="loadChart('3M')">3M</button>
@@ -803,13 +804,13 @@
       const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(currentChartTicker)}&period=${period}`);
       if (!res.ok) throw new Error('차트 데이터 없음');
       const json = await res.json();
-      renderChart(json.data, json.market);
+      renderChart(json.data, json.market, json);
     } catch(e) {
       document.getElementById('chartLoading').textContent = '차트 데이터를 불러올 수 없습니다.';
     }
   }
 
-  function renderChart(data, market) {
+  function renderChart(data, market, json = {}) {
     document.getElementById('chartLoading').style.display = 'none';
     if (!data || data.length === 0) {
       document.getElementById('chartLoading').textContent = '데이터 없음';
@@ -817,10 +818,11 @@
       return;
     }
 
+    const isMinute = json && json.type === 'minute';
     const labels = data.map(d => {
       const s = String(d.date);
       if (s.length === 8) return `${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
-      return s;
+      return s; // HH:MM 분봉은 그대로
     });
     const closes = data.map(d => d.close);
     const first = closes[0];

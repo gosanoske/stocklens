@@ -3240,16 +3240,6 @@ KR_ALIAS_MAP = {
     "하이브": "352820",
     "카카오게임즈": "293490",
     "쿠팡": "358200",
-        # 우선주
-    "삼성전자우": "005935",
-    "현대차우": "005385",
-    "현대차2우b": "005387",
-    "lg전자우": "066575",
-    "삼성물산우b": "028270",
-    "amorepacific우": "090435",
-    "sk이노베이션우": "096775",
-    "lg화학우": "051915",
-    "삼성sdi우": "006405",
 }
 KR_TICKER_MAP.update({k.lower(): v for k, v in KR_ALIAS_MAP.items()})
 
@@ -3445,28 +3435,34 @@ def search_stock(q: str):
 def get_chart(q: str, period: str = "1M"):
     """
     주식 차트 데이터 조회
-    period: 1D(당일), 1W(1주), 1M(1개월), 3M(3개월), 1Y(1년)
+    period: 1D(당일 분봉), 1W(1주), 1M(1개월), 3M(3개월), 1Y(1년)
     """
     if not q:
         raise HTTPException(status_code=400, detail="검색어를 입력하세요.")
 
     ticker = normalize_ticker(q)
 
-    # 기간별 설정
     from datetime import datetime, timedelta
     today = datetime.today()
-    period_map = {
-        "1D": (today - timedelta(days=1),   "D"),
-        "1W": (today - timedelta(weeks=1),  "D"),
-        "1M": (today - timedelta(days=30),  "D"),
-        "3M": (today - timedelta(days=90),  "D"),
-        "1Y": (today - timedelta(days=365), "W"),
-    }
-    start_dt, div_code = period_map.get(period, period_map["1M"])
-    start_str = start_dt.strftime("%Y%m%d")
-    end_str = today.strftime("%Y%m%d")
 
     try:
+        # 1D는 분봉으로 별도 처리
+        if period == "1D":
+            if is_korean(ticker):
+                return get_kr_minute_chart(ticker, "5")  # 5분봉
+            else:
+                return get_us_minute_chart(ticker, "5")
+
+        period_map = {
+            "1W": (today - timedelta(weeks=1),  "D"),
+            "1M": (today - timedelta(days=30),  "D"),
+            "3M": (today - timedelta(days=90),  "D"),
+            "1Y": (today - timedelta(days=365), "W"),
+        }
+        start_dt, div_code = period_map.get(period, period_map["1M"])
+        start_str = start_dt.strftime("%Y%m%d")
+        end_str = today.strftime("%Y%m%d")
+
         if is_korean(ticker):
             return get_kr_chart(ticker, start_str, end_str, div_code)
         else:
@@ -3476,6 +3472,53 @@ def get_chart(q: str, period: str = "1M"):
     except Exception as e:
         _token_cache["access_token"] = None
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def get_kr_minute_chart(ticker: str, minute: str = "5") -> dict:
+    """한국 주식 분봉 차트 (당일)"""
+    from datetime import datetime
+    now = datetime.today()
+    end_time = now.strftime("%H%M%S")
+
+    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
+    params = {
+        "FID_ETC_CLS_CODE": "",
+        "FID_COND_MRKT_DIV_CODE": "J",
+        "FID_INPUT_ISCD": ticker,
+        "FID_INPUT_HOUR_1": end_time,
+        "FID_PW_DATA_INCU_YN": "Y",
+        "FID_HOUR_CLS_CODE": minute,  # 분 단위
+    }
+    res = requests.get(url, headers=kis_headers("FHKST03010200"), params=params)
+    if res.status_code != 200:
+        raise HTTPException(status_code=404, detail="분봉 데이터 조회 실패")
+    data = res.json()
+    if data.get("rt_cd") != "0":
+        raise HTTPException(status_code=404, detail=data.get("msg1", "조회 실패"))
+
+    output = data.get("output2", [])
+    result = []
+    for row in reversed(output):
+        t = row.get("stck_cntg_hour", "")
+        result.append({
+            "date": f"{t[:2]}:{t[2:4]}" if len(t) >= 4 else t,
+            "open": safe_float(row.get("stck_oprc")),
+            "high": safe_float(row.get("stck_hgpr")),
+            "low": safe_float(row.get("stck_lwpr")),
+            "close": safe_float(row.get("stck_prpr")),
+            "volume": safe_float(row.get("cntg_vol")),
+        })
+    return {"ticker": ticker, "market": "KR", "data": result, "type": "minute"}
+
+
+def get_us_minute_chart(ticker: str, minute: str = "5") -> dict:
+    """미국 주식 분봉 차트 (당일) - KIS API 미지원으로 당일 일봉 대체"""
+    from datetime import datetime, timedelta
+    today = datetime.today()
+    start_str = (today - timedelta(days=5)).strftime("%Y%m%d")
+    end_str = today.strftime("%Y%m%d")
+    # 미국 분봉은 KIS API 미지원 → 최근 5일 일봉으로 대체
+    return get_us_chart(ticker, start_str, end_str, "D")
 
 
 def get_kr_chart(ticker: str, start: str, end: str, div_code: str) -> dict:
