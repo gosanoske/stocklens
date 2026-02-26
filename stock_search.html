@@ -44,9 +44,18 @@
     const isMinute = json && json.type === 'minute';
     const labels = data.map(d => {
       const s = String(d.date);
-      if (s.length === 8) return `${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
-      return s; // HH:MM 분봉은 그대로
+      if (isMinute) {
+        // 분봉: "HHMMSS" → "HH:MM" 또는 이미 "HH:MM" 형태
+        if (s.length === 6) return s.slice(0,2) + ':' + s.slice(2,4);
+        return s; // 이미 HH:MM 형태
+      }
+      // 일봉/주봉/월봉: "YYYYMMDD" → "YY.MM.DD"
+      if (s.length === 8) return `${s.slice(2,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
+      return s;
     });
+
+    // 기간별 x축 틱 개수 설정
+    const tickLimit = isMinute ? 8 : currentPeriod === '10Y' ? 6 : currentPeriod === '1Y' ? 8 : 6;
     const closes = data.map(d => d.close);
     const first = closes[0];
     const last = closes[closes.length - 1];
@@ -101,7 +110,7 @@
             ticks: {
               color: '#5a6070',
               font: { family: 'JetBrains Mono', size: 10 },
-              maxTicksLimit: 6,
+              maxTicksLimit: tickLimit,
               maxRotation: 0,
             }
           },
@@ -824,9 +833,18 @@
     const isMinute = json && json.type === 'minute';
     const labels = data.map(d => {
       const s = String(d.date);
-      if (s.length === 8) return `${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
-      return s; // HH:MM 분봉은 그대로
+      if (isMinute) {
+        // 분봉: "HHMMSS" → "HH:MM" 또는 이미 "HH:MM" 형태
+        if (s.length === 6) return s.slice(0,2) + ':' + s.slice(2,4);
+        return s; // 이미 HH:MM 형태
+      }
+      // 일봉/주봉/월봉: "YYYYMMDD" → "YY.MM.DD"
+      if (s.length === 8) return `${s.slice(2,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
+      return s;
     });
+
+    // 기간별 x축 틱 개수 설정
+    const tickLimit = isMinute ? 8 : currentPeriod === '10Y' ? 6 : currentPeriod === '1Y' ? 8 : 6;
     const closes = data.map(d => d.close);
     const first = closes[0];
     const last = closes[closes.length - 1];
@@ -881,7 +899,7 @@
             ticks: {
               color: '#5a6070',
               font: { family: 'JetBrains Mono', size: 10 },
-              maxTicksLimit: 6,
+              maxTicksLimit: tickLimit,
               maxRotation: 0,
             }
           },
