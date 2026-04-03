@@ -3278,7 +3278,7 @@ def kis_headers(tr_id: str):
         "appkey": KIS_APP_KEY,
         "appsecret": KIS_APP_SECRET,
         "tr_id": tr_id,
-        "Content-Type": "application/json; charset=utf-8",
+        "Content-Type": "application/json; charset=utf-8", 
     }
 
 
@@ -3368,6 +3368,17 @@ def get_us_stock(ticker: str) -> dict:
               "COIN","HOOD","RBLX","DKNG","CHWY","ETSY","EBAY","COST",
               "SBUX","MDLZ","MNST","BIIB","GILD","REGN","VRTX","ILMN"]
     excd = "NAS" if ticker in nasdaq else "NYS"
+
+
+
+
+
+
+
+
+
+    
+    
     url = f"{KIS_BASE_URL}/uapi/overseas-price/v1/quotations/price"
     params = {"AUTH": "", "EXCD": excd, "SYMB": ticker}
     res = requests.get(url, headers=kis_headers("HHDFS00000300"), params=params)
@@ -3450,6 +3461,7 @@ def get_chart(q: str, period: str = "1M"):
             1Y(1년일봉), 10Y(10년월봉)
     """
     if not q:
+        
         raise HTTPException(status_code=400, detail="검색어를 입력하세요.")
 
     ticker = normalize_ticker(q)
@@ -3460,6 +3472,7 @@ def get_chart(q: str, period: str = "1M"):
 
     try:
         # 분봉/시간봉
+    
         minute_map = {"5M": "5", "10M": "5", "30M": "5", "1H": "5"}
         if period in minute_map:
             minute = minute_map[period]
@@ -3472,7 +3485,7 @@ def get_chart(q: str, period: str = "1M"):
             if period == "10M":
                 result = aggregate_minutes(result, 10)
             elif period == "30M":
-                result = aggregate_minutes(result, 30)
+                result = aggregate_minutes(result, 30)     
             elif period == "1H":
                 result = aggregate_to_hourly(result)
             return result

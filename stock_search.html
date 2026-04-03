@@ -5,142 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StockLens — 주식 종목 검색</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
-  // ── 차트 ──
-  let chartInstance = null;
-  let currentChartTicker = null;
-  let currentPeriod = '1M';
-
-  async function loadChart(period) {
-    if (!currentChartTicker) return;
-    currentPeriod = period;
-
-    // 버튼 활성화
-    document.querySelectorAll('.period-btn').forEach(b => {
-      b.classList.toggle('active', b.textContent === period);
-    });
-
-    document.getElementById('chartLoading').style.display = 'flex';
-    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-
-    try {
-      const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(currentChartTicker)}&period=${period}`);
-      if (!res.ok) throw new Error('차트 데이터 없음');
-      const json = await res.json();
-      renderChart(json.data, json.market, json);
-    } catch(e) {
-      document.getElementById('chartLoading').textContent = '차트 데이터를 불러올 수 없습니다.';
-    }
-  }
-
-  function renderChart(data, market, json = {}) {
-    document.getElementById('chartLoading').style.display = 'none';
-    if (!data || data.length === 0) {
-      document.getElementById('chartLoading').textContent = '데이터 없음';
-      document.getElementById('chartLoading').style.display = 'flex';
-      return;
-    }
-
-    const isMinute = json && json.type === 'minute';
-    const interval = json && json.interval ? parseInt(json.interval) : 5;
-    const labels = data.map(d => {
-      const s = String(d.date);
-      if (isMinute) {
-        // 이미 "HH:MM" 형태로 서버에서 가공됨
-        return s;
-      }
-      // 일봉/주봉/월봉: "YYYYMMDD" → "YY.MM.DD"
-      if (s.length === 8) return `${s.slice(2,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
-      return s;
-    });
-
-    // 기간/단위별 x축 틱 개수
-    let tickLimit = 6;
-    if (isMinute) {
-      if (interval === 60) tickLimit = 6;        // 1H
-      else if (interval === 30) tickLimit = 8;  // 30M
-      else if (interval === 10) tickLimit = 8;  // 10M
-      else tickLimit = 10;                      // 5M: 촘촘하게
-    } else {
-      if (currentPeriod === '10Y') tickLimit = 6;
-      else if (currentPeriod === '1Y') tickLimit = 8;
-      else tickLimit = 6;
-    }
-    const closes = data.map(d => d.close);
-    const first = closes[0];
-    const last = closes[closes.length - 1];
-    const isUp = last >= first;
-    const lineColor = isUp ? '#ff4757' : '#4a9eff';
-    const fillColor = isUp ? 'rgba(255,71,87,0.08)' : 'rgba(74,158,255,0.08)';
-
-    const ctx = document.getElementById('priceChart').getContext('2d');
-    chartInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          data: closes,
-          borderColor: lineColor,
-          backgroundColor: fillColor,
-          borderWidth: 1.5,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          pointHoverBackgroundColor: lineColor,
-          fill: true,
-          tension: 0.2,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1a1d28',
-            borderColor: '#2a2d3a',
-            borderWidth: 1,
-            titleColor: '#7a8090',
-            bodyColor: '#e8eaf0',
-            titleFont: { family: 'JetBrains Mono', size: 11 },
-            bodyFont: { family: 'JetBrains Mono', size: 13 },
-            callbacks: {
-              label: ctx => {
-                const v = ctx.parsed.y;
-                return market === 'KR'
-                  ? '  ₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
-                  : '  $' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: {
-              color: '#5a6070',
-              font: { family: 'JetBrains Mono', size: 10 },
-              maxTicksLimit: tickLimit,
-              maxRotation: 0,
-            }
-          },
-          y: {
-            position: 'right',
-            grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: {
-              color: '#5a6070',
-              font: { family: 'JetBrains Mono', size: 10 },
-              callback: v => market === 'KR'
-                ? v.toLocaleString('ko-KR', {maximumFractionDigits:0})
-                : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
-            }
-          }
-        }
-      }
-    });
-  }
-
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
     --bg: #0a0c10;
@@ -612,7 +477,7 @@
 </div>
 
 <script>
-  const API_BASE = 'https://stocklens-production.up.railway.app';
+  const API_BASE = 'https://YOUR-APP-NAME.onrender.com';
 
   function fillSearch(v) {
     document.getElementById('searchInput').value = v;
@@ -643,7 +508,6 @@
     const isKR = d.market === 'KR';
     const currency = isKR ? '₩' : '$';
 
-    // 종목명 / 코드
     setText('stockName', d.name || d.ticker);
     setText('stockCode', d.ticker);
     const badge = document.getElementById('marketBadge');
@@ -651,11 +515,9 @@
     badge.className = 'market-badge ' + (isKR ? 'badge-kr' : 'badge-us');
     setText('marketType', d.market_type || '');
 
-    // 현재가
     const price = d.current_price;
     setText('currentPrice', price != null ? `${currency}${fmtPrice(price, isKR)}` : 'N/A');
 
-    // 등락
     const chg = d.price_change_pct;
     const amt = d.price_change_amt;
     const chgEl = document.getElementById('priceChange');
@@ -669,7 +531,6 @@
       chgEl.textContent = '—'; chgEl.className = 'price-change flat';
     }
 
-    // 가격 바
     setPriceItem('prevClose', d.prev_close, currency, isKR);
     setPriceItem('openPrice', d.open_price, currency, isKR);
     setColorPrice('highPrice', d.high_price, currency, isKR, 'up');
@@ -682,19 +543,16 @@
       limitEl.textContent = '—';
     }
 
-    // 거래량/거래대금/시가총액/상장주식수
     setText('volume', d.volume != null ? fmtVolume(d.volume) : 'N/A');
     setText('tradeValue', d.trade_value != null ? fmtTradeValue(d.trade_value, isKR) : 'N/A');
     setText('marketCap', d.market_cap != null ? fmtCap(d.market_cap, currency) : 'N/A');
     setText('listedShares', d.listed_shares != null ? fmtVolume(d.listed_shares) : 'N/A');
 
-    // 투자지표
     setMetric('per', d.per, '배');
     setMetric('eps', d.eps, isKR ? '원' : '$');
     setMetric('pbr', d.pbr, '배');
     setMetric('bps', d.bps, isKR ? '원' : '$');
 
-    // 52주 바
     const h52 = d.high_52w, l52 = d.low_52w;
     document.getElementById('high52').textContent = h52 != null ? `${currency}${fmtPrice(h52, isKR)}` : '—';
     document.getElementById('low52').textContent = l52 != null ? `${currency}${fmtPrice(l52, isKR)}` : '—';
@@ -705,11 +563,9 @@
       document.getElementById('rangeDot').style.left = clamp + '%';
     }
 
-    // 배당
     const divY = d.dividend_yield;
     const divYEl = document.getElementById('divYield');
     if (divY != null && divY > 0) {
-      // KIS는 % 단위로 올 수도 있고 소수로 올 수도 있음
       const pct = divY > 1 ? divY : divY * 100;
       divYEl.textContent = pct.toFixed(2) + '%';
       divYEl.className = 'div-value';
@@ -732,7 +588,6 @@
     }
 
     document.getElementById('resultCard').style.display = 'block';
-    // 차트 로드
     document.getElementById('chartSection').style.display = 'block';
     currentChartTicker = d.ticker;
     loadChart(currentPeriod);
@@ -784,7 +639,6 @@
   function fmtTradeValue(n, isKR) {
     if (n == null) return '—';
     if (isKR) {
-      // 백만 단위로 전달됨
       const won = n * 1e6;
       if (won >= 1e12) return (won / 1e12).toFixed(1) + '조';
       if (won >= 1e8) return (won / 1e8).toFixed(0) + '억';
@@ -815,7 +669,6 @@
     if (!currentChartTicker) return;
     currentPeriod = period;
 
-    // 버튼 활성화
     document.querySelectorAll('.period-btn').forEach(b => {
       b.classList.toggle('active', b.textContent === period);
     });
@@ -845,27 +698,23 @@
     const interval = json && json.interval ? parseInt(json.interval) : 5;
     const labels = data.map(d => {
       const s = String(d.date);
-      if (isMinute) {
-        // 이미 "HH:MM" 형태로 서버에서 가공됨
-        return s;
-      }
-      // 일봉/주봉/월봉: "YYYYMMDD" → "YY.MM.DD"
+      if (isMinute) return s;
       if (s.length === 8) return `${s.slice(2,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
       return s;
     });
 
-    // 기간/단위별 x축 틱 개수
     let tickLimit = 6;
     if (isMinute) {
-      if (interval === 60) tickLimit = 6;        // 1H
-      else if (interval === 30) tickLimit = 8;  // 30M
-      else if (interval === 10) tickLimit = 8;  // 10M
-      else tickLimit = 10;                      // 5M: 촘촘하게
+      if (interval === 60) tickLimit = 6;
+      else if (interval === 30) tickLimit = 8;
+      else if (interval === 10) tickLimit = 8;
+      else tickLimit = 10;
     } else {
       if (currentPeriod === '10Y') tickLimit = 6;
       else if (currentPeriod === '1Y') tickLimit = 8;
       else tickLimit = 6;
     }
+
     const closes = data.map(d => d.close);
     const first = closes[0];
     const last = closes[closes.length - 1];
@@ -939,7 +788,6 @@
       }
     });
   }
-
 </script>
 </body>
 </html>
