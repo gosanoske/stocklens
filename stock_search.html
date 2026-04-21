@@ -590,6 +590,7 @@
     document.getElementById('resultCard').style.display = 'block';
     document.getElementById('chartSection').style.display = 'block';
     currentChartTicker = d.ticker;
+    currentPrevClose = d.prev_close;
     loadChart(currentPeriod);
   }
 
@@ -664,6 +665,7 @@
   let chartInstance = null;
   let currentChartTicker = null;
   let currentPeriod = '1M';
+  let currentPrevClose = null;
 
   async function loadChart(period) {
     if (!currentChartTicker) return;
@@ -718,7 +720,7 @@
     const closes = data.map(d => d.close);
     const first = closes[0];
     const last = closes[closes.length - 1];
-    const currentPrice = last;
+    const basePrice = currentPrevClose || last; // 전일 종가 기준, 없으면 마지막 봉
     const isUp = last >= first;
     const lineColor = isUp ? '#ff4757' : '#4a9eff';
     const fillColor = isUp ? 'rgba(255,71,87,0.08)' : 'rgba(74,158,255,0.08)';
@@ -760,10 +762,10 @@
                 const priceStr = market === 'KR'
                   ? '  ₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
                   : '  $' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-                const diffPct = currentPrice ? ((v - currentPrice) / currentPrice * 100) : 0;
+                const diffPct = basePrice ? ((v - basePrice) / basePrice * 100) : 0;
                 const sign = diffPct >= 0 ? '+' : '';
                 const arrow = diffPct > 0 ? '▲' : diffPct < 0 ? '▼' : '─';
-                const pctStr = `  ${arrow} 현재가 대비 ${sign}${diffPct.toFixed(2)}%`;
+                const pctStr = `  ${arrow} 전일 대비 ${sign}${diffPct.toFixed(2)}%`;
                 return [priceStr, pctStr];
               }
             }
