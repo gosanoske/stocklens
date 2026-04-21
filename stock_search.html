@@ -408,15 +408,15 @@
         <div class="m-value accent" id="per">—</div>
       </div>
       <div class="metric-item">
+        <div class="m-label">EPS</div>
+        <div class="m-value" id="eps">—</div>
+      </div>
+      <div class="metric-item">
         <div class="m-label">PBR</div>
         <div class="m-value accent" id="pbr">—</div>
       </div>
       <div class="metric-item">
-        <div class="m-label">EPS(순이익/발행주식수|EPS↑ 잘범|EPS증가 성장중|EPS = 돈 버는 힘)</div>
-        <div class="m-value" id="eps">—</div>
-      </div>
-      <div class="metric-item">
-        <div class="m-label">BPS(순자산/발행주식수|주가'<'bps 저평가|주가'>'bps 프리미엄|BPS = 깔고 있는 자산)</div>
+        <div class="m-label">BPS</div>
         <div class="m-value" id="bps">—</div>
       </div>
     </div>
@@ -477,7 +477,7 @@
 </div>
 
 <script>
-  const API_BASE = 'https://stocklens-rxli.onrender.com';
+  const API_BASE = 'https://YOUR-APP-NAME.onrender.com';
 
   function fillSearch(v) {
     document.getElementById('searchInput').value = v;
@@ -537,7 +537,7 @@
     setColorPrice('lowPrice', d.low_price, currency, isKR, 'down');
 
     const limitEl = document.getElementById('limitPrice');
-    if (d.upper_limit && d.lower_limit) {z
+    if (d.upper_limit && d.lower_limit) {
       limitEl.innerHTML = `<span style="color:var(--red)">${fmtPrice(d.upper_limit, isKR)}</span> / <span style="color:#4a9eff">${fmtPrice(d.lower_limit, isKR)}</span>`;
     } else {
       limitEl.textContent = '—';
@@ -597,7 +597,7 @@
 
   function setPriceItem(id, val, currency, isKR) {
     const el = document.getElementById(id);
-    el.textContent = val != null ? `${currency}${fmtPrice(val, isKR)}` : '—';0
+    el.textContent = val != null ? `${currency}${fmtPrice(val, isKR)}` : '—';
     el.className = 'pi-value';
   }
 
@@ -718,6 +718,7 @@
     const closes = data.map(d => d.close);
     const first = closes[0];
     const last = closes[closes.length - 1];
+    const currentPrice = last;
     const isUp = last >= first;
     const lineColor = isUp ? '#ff4757' : '#4a9eff';
     const fillColor = isUp ? 'rgba(255,71,87,0.08)' : 'rgba(74,158,255,0.08)';
@@ -756,9 +757,14 @@
             callbacks: {
               label: ctx => {
                 const v = ctx.parsed.y;
-                return market === 'KR'
+                const priceStr = market === 'KR'
                   ? '  ₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
                   : '  $' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+                const diffPct = currentPrice ? ((v - currentPrice) / currentPrice * 100) : 0;
+                const sign = diffPct >= 0 ? '+' : '';
+                const arrow = diffPct > 0 ? '▲' : diffPct < 0 ? '▼' : '─';
+                const pctStr = `  ${arrow} 현재가 대비 ${sign}${diffPct.toFixed(2)}%`;
+                return [priceStr, pctStr];
               }
             }
           }
