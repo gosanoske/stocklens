@@ -6,6 +6,9 @@
 <title>StockLens — 주식 종목 검색</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
 <style>
   :root {
     --bg: #0a0c10;
@@ -272,7 +275,32 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 14px;
+    gap: 10px;
+    flex-wrap: wrap;
   }
+  .chart-type-tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .chart-type-btn {
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 14px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .chart-type-btn:last-child { border-right: none; }
+  .chart-type-btn:hover { background: rgba(0,229,255,0.05); color: var(--accent); }
+  .chart-type-btn.active { background: rgba(0,229,255,0.1); color: var(--accent); }
   .chart-title {
     font-size: 0.65rem;
     color: var(--label);
@@ -283,6 +311,7 @@
   .period-tabs {
     display: flex;
     gap: 4px;
+    flex-wrap: wrap;
   }
   .period-btn {
     background: transparent;
@@ -297,7 +326,7 @@
   }
   .period-btn:hover { border-color: var(--accent); color: var(--accent); }
   .period-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); }
-  .chart-wrap { position: relative; height: 220px; }
+  .chart-wrap { position: relative; height: 280px; }
   .chart-loading {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
@@ -438,17 +467,25 @@
     <!-- 차트 -->
     <div class="chart-section" id="chartSection" style="display:none">
       <div class="chart-header">
-        <div class="chart-title">주가 차트</div>
-        <div class="period-tabs">
-          <button class="period-btn" onclick="loadChart('5M')">5M</button>
-          <button class="period-btn" onclick="loadChart('10M')">10M</button>
-          <button class="period-btn" onclick="loadChart('30M')">30M</button>
-          <button class="period-btn" onclick="loadChart('1H')">1H</button>
-          <button class="period-btn" onclick="loadChart('1W')">1W</button>
-          <button class="period-btn active" onclick="loadChart('1M')">1M</button>
-          <button class="period-btn" onclick="loadChart('3M')">3M</button>
-          <button class="period-btn" onclick="loadChart('1Y')">1Y</button>
-          <button class="period-btn" onclick="loadChart('10Y')">10Y</button>
+        <!-- 차트 타입 탭 -->
+        <div class="chart-type-tabs">
+          <button class="chart-type-btn active" id="btnLine" onclick="setChartType('line')">선차트</button>
+          <button class="chart-type-btn" id="btnCandle" onclick="setChartType('candle')">봉차트</button>
+        </div>
+        <!-- 기간 버튼 -->
+        <div class="period-tabs" id="linePeriodTabs">
+          <button class="period-btn active" onclick="loadChart('1D')">1일</button>
+          <button class="period-btn" onclick="loadChart('1W')">1주</button>
+          <button class="period-btn" onclick="loadChart('3M')">3개월</button>
+          <button class="period-btn" onclick="loadChart('1Y')">1년</button>
+          <button class="period-btn" onclick="loadChart('3Y')">3년</button>
+          <button class="period-btn" onclick="loadChart('5Y')">5년</button>
+          <button class="period-btn" onclick="loadChart('10Y')">10년</button>
+        </div>
+        <div class="period-tabs" id="candlePeriodTabs" style="display:none">
+          <button class="period-btn active" onclick="loadCandleChart('D')">일봉</button>
+          <button class="period-btn" onclick="loadCandleChart('W')">주봉</button>
+          <button class="period-btn" onclick="loadCandleChart('M')">월봉</button>
         </div>
       </div>
       <div class="chart-wrap">
@@ -591,7 +628,16 @@
     document.getElementById('chartSection').style.display = 'block';
     currentChartTicker = d.ticker;
     currentPrevClose = d.prev_close;
-    loadChart(currentPeriod);
+    currentMarket = d.market;
+    currentChartType = 'line';
+    currentLinePeriod = '1D';
+    currentCandlePeriod = 'D';
+    document.getElementById('btnLine').classList.add('active');
+    document.getElementById('btnCandle').classList.remove('active');
+    document.getElementById('linePeriodTabs').style.display = 'flex';
+    document.getElementById('candlePeriodTabs').style.display = 'none';
+    setActivePeriodBtn('linePeriodTabs', '1일');
+    loadChart('1D');
   }
 
   function setText(id, val) { document.getElementById(id).textContent = val ?? '—'; }
@@ -661,34 +707,70 @@
   function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = '⚠ ' + msg; el.style.display = 'block'; }
   function hideAll() { document.getElementById('resultCard').style.display = 'none'; document.getElementById('errorMsg').style.display = 'none'; }
 
-  // ── 차트 ──
+  // ── 차트 상태 ──
   let chartInstance = null;
   let currentChartTicker = null;
-  let currentPeriod = '1M';
   let currentPrevClose = null;
+  let currentChartType = 'line'; // 'line' | 'candle'
+  let currentLinePeriod = '1D';
+  let currentCandlePeriod = 'D';
+  let currentMarket = 'KR';
+
+  // 선차트/봉차트 탭 전환
+  function setChartType(type) {
+    currentChartType = type;
+    document.getElementById('btnLine').classList.toggle('active', type === 'line');
+    document.getElementById('btnCandle').classList.toggle('active', type === 'candle');
+    document.getElementById('linePeriodTabs').style.display = type === 'line' ? 'flex' : 'none';
+    document.getElementById('candlePeriodTabs').style.display = type === 'candle' ? 'flex' : 'none';
+
+    if (type === 'line') loadChart(currentLinePeriod);
+    else loadCandleChart(currentCandlePeriod);
+  }
+
+  // 기간 버튼 활성화
+  function setActivePeriodBtn(tabs, label) {
+    document.querySelectorAll(`#${tabs} .period-btn`).forEach(b => {
+      b.classList.toggle('active', b.textContent.trim() === label);
+    });
+  }
+
+  // ── 선차트 ──
+  // 기간 → server.py period 파라미터 매핑
+  const LINE_PERIOD_MAP = {
+    '1일': '1D', '1주': '1W', '3개월': '3M', '1년': '1Y', '3년': '3Y', '5년': '5Y', '10년': '10Y'
+  };
+  // server.py에 3Y, 5Y 추가 필요 → 여기선 3M/1Y/10Y로 근사 매핑
+  const SERVER_PERIOD_MAP = {
+    '1D': '1M',   // 1일 → 분봉(당일)
+    '1W': '1W',
+    '3M': '3M',
+    '1Y': '1Y',
+    '3Y': '10Y',  // 3년 근사
+    '5Y': '10Y',  // 5년 근사
+    '10Y': '10Y',
+  };
 
   async function loadChart(period) {
     if (!currentChartTicker) return;
-    currentPeriod = period;
-
-    document.querySelectorAll('.period-btn').forEach(b => {
-      b.classList.toggle('active', b.textContent === period);
-    });
+    currentLinePeriod = period;
+    setActivePeriodBtn('linePeriodTabs', period === '1D' ? '1일' : period === '1W' ? '1주' : period === '3M' ? '3개월' : period === '1Y' ? '1년' : period === '3Y' ? '3년' : period === '5Y' ? '5년' : '10년');
 
     document.getElementById('chartLoading').style.display = 'flex';
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
+    const serverPeriod = SERVER_PERIOD_MAP[period] || '1M';
     try {
-      const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(currentChartTicker)}&period=${period}`);
+      const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(currentChartTicker)}&period=${serverPeriod}`);
       if (!res.ok) throw new Error('차트 데이터 없음');
       const json = await res.json();
-      renderChart(json.data, json.market, json);
+      renderLineChart(json.data, json.market, json);
     } catch(e) {
       document.getElementById('chartLoading').textContent = '차트 데이터를 불러올 수 없습니다.';
     }
   }
 
-  function renderChart(data, market, json = {}) {
+  function renderLineChart(data, market, json = {}) {
     document.getElementById('chartLoading').style.display = 'none';
     if (!data || data.length === 0) {
       document.getElementById('chartLoading').textContent = '데이터 없음';
@@ -706,22 +788,16 @@
     });
 
     let tickLimit = 6;
-    if (isMinute) {
-      if (interval === 60) tickLimit = 6;
-      else if (interval === 30) tickLimit = 8;
-      else if (interval === 10) tickLimit = 8;
-      else tickLimit = 10;
-    } else {
-      if (currentPeriod === '10Y') tickLimit = 6;
-      else if (currentPeriod === '1Y') tickLimit = 8;
-      else tickLimit = 6;
-    }
+    if (isMinute) tickLimit = 8;
+    else if (currentLinePeriod === '10Y') tickLimit = 6;
+    else if (currentLinePeriod === '1Y' || currentLinePeriod === '3Y' || currentLinePeriod === '5Y') tickLimit = 8;
+    else tickLimit = 6;
 
     const closes = data.map(d => d.close);
     const first = closes[0];
     const last = closes[closes.length - 1];
-    const basePrice = currentPrevClose || last; // 전일 종가 기준, 없으면 마지막 봉
-    const isUp = last >= first;
+    const basePrice = currentPrevClose || last;
+    const isUp = last >= (currentPrevClose || first);
     const lineColor = isUp ? '#ff4757' : '#4a9eff';
     const fillColor = isUp ? 'rgba(255,71,87,0.08)' : 'rgba(74,158,255,0.08)';
 
@@ -765,8 +841,128 @@
                 const diffPct = basePrice ? ((v - basePrice) / basePrice * 100) : 0;
                 const sign = diffPct >= 0 ? '+' : '';
                 const arrow = diffPct > 0 ? '▲' : diffPct < 0 ? '▼' : '─';
-                const pctStr = `  ${arrow} 전일 대비 ${sign}${diffPct.toFixed(2)}%`;
-                return [priceStr, pctStr];
+                return [priceStr, `  ${arrow} 전일 대비 ${sign}${diffPct.toFixed(2)}%`];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: { color: '#5a6070', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: tickLimit, maxRotation: 0 }
+          },
+          y: {
+            position: 'right',
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: {
+              color: '#5a6070',
+              font: { family: 'JetBrains Mono', size: 10 },
+              callback: v => market === 'KR'
+                ? v.toLocaleString('ko-KR', {maximumFractionDigits:0})
+                : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ── 봉차트 ──
+  const CANDLE_SERVER_MAP = { 'D': '1M', 'W': '1Y', 'M': '10Y' };
+
+  async function loadCandleChart(divCode) {
+    if (!currentChartTicker) return;
+    currentCandlePeriod = divCode;
+    setActivePeriodBtn('candlePeriodTabs', divCode === 'D' ? '일봉' : divCode === 'W' ? '주봉' : '월봉');
+
+    document.getElementById('chartLoading').style.display = 'flex';
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    const serverPeriod = CANDLE_SERVER_MAP[divCode] || '1M';
+    try {
+      const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(currentChartTicker)}&period=${serverPeriod}`);
+      if (!res.ok) throw new Error('차트 데이터 없음');
+      const json = await res.json();
+      renderCandleChart(json.data, json.market);
+    } catch(e) {
+      document.getElementById('chartLoading').textContent = '차트 데이터를 불러올 수 없습니다.';
+    }
+  }
+
+  function renderCandleChart(data, market) {
+    document.getElementById('chartLoading').style.display = 'none';
+    if (!data || data.length === 0) {
+      document.getElementById('chartLoading').textContent = '데이터 없음';
+      document.getElementById('chartLoading').style.display = 'flex';
+      return;
+    }
+
+    // OHLC 데이터 변환
+    const labels = data.map(d => {
+      const s = String(d.date);
+      if (s.length === 8) return `${s.slice(2,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
+      return s;
+    });
+
+    const candleData = data.map((d, i) => ({
+      x: i,
+      o: d.open,
+      h: d.high,
+      l: d.low,
+      c: d.close,
+    }));
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'candlestick',
+      data: {
+        labels,
+        datasets: [{
+          label: currentChartTicker,
+          data: candleData,
+          color: {
+            up: '#ff4757',
+            down: '#4a9eff',
+            unchanged: '#888',
+          },
+          borderColor: {
+            up: '#ff4757',
+            down: '#4a9eff',
+            unchanged: '#888',
+          },
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1d28',
+            borderColor: '#2a2d3a',
+            borderWidth: 1,
+            titleColor: '#7a8090',
+            bodyColor: '#e8eaf0',
+            titleFont: { family: 'JetBrains Mono', size: 11 },
+            bodyFont: { family: 'JetBrains Mono', size: 12 },
+            callbacks: {
+              title: items => labels[items[0].dataIndex] || '',
+              label: item => {
+                const d = candleData[item.dataIndex];
+                if (!d) return '';
+                const fmt = v => market === 'KR'
+                  ? '₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
+                  : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+                const chgPct = d.o ? ((d.c - d.o) / d.o * 100) : 0;
+                const sign = chgPct >= 0 ? '+' : '';
+                return [
+                  `  시가  ${fmt(d.o)}`,
+                  `  고가  ${fmt(d.h)}`,
+                  `  저가  ${fmt(d.l)}`,
+                  `  종가  ${fmt(d.c)}`,
+                  `  등락  ${sign}${chgPct.toFixed(2)}%`,
+                ];
               }
             }
           }
@@ -777,8 +973,9 @@
             ticks: {
               color: '#5a6070',
               font: { family: 'JetBrains Mono', size: 10 },
-              maxTicksLimit: tickLimit,
+              maxTicksLimit: 8,
               maxRotation: 0,
+              callback: (val, idx) => labels[idx] || '',
             }
           },
           y: {
