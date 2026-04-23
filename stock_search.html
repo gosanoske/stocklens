@@ -333,6 +333,90 @@
     color: var(--muted); font-family: 'JetBrains Mono', monospace;
     font-size: 0.75rem;
   }
+
+  /* ── 투자정보 패널 ── */
+  .invest-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    border-bottom: none;
+  }
+  .invest-header {
+    padding: 10px 20px;
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    border-bottom: 1px solid var(--border);
+    opacity: 0.8;
+  }
+  .invest-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .invest-group {
+    padding: 14px 20px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .invest-group:nth-child(2n) { border-right: none; }
+  .invest-group-title {
+    font-size: 0.6rem;
+    color: var(--accent);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 10px;
+    opacity: 0.7;
+  }
+  .invest-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .invest-row:last-child { border-bottom: none; }
+  .invest-label {
+    font-size: 0.72rem;
+    color: var(--label);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .invest-value {
+    font-size: 0.78rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .invest-value.up { color: var(--red); }
+  .invest-value.down { color: #4a9eff; }
+  .invest-value.accent { color: var(--accent); }
+  .invest-value.na { color: var(--muted); font-size: 0.7rem; }
+
+  /* 외국인 소진율 바 */
+  .frgn-bar-wrap { margin-top: 6px; }
+  .frgn-bar-track {
+    width: 100%; height: 4px;
+    background: var(--border); border-radius: 2px;
+    margin-top: 4px; position: relative;
+  }
+  .frgn-bar-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), #ff4757);
+    transition: width 0.5s ease;
+  }
+  .frgn-bar-label {
+    display: flex; justify-content: space-between;
+    font-size: 0.62rem; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 3px;
+  }
+
+  @media (max-width: 640px) {
+    .invest-grid { grid-template-columns: 1fr; }
+    .invest-group { border-right: none; }
+  }
 </style>
 </head>
 <body>
@@ -494,6 +578,112 @@
       </div>
     </div>
 
+    <!-- 투자정보 패널 (한국 주식만 표시) -->
+    <div class="invest-section" id="investSection" style="display:none">
+      <div class="invest-header">투자정보</div>
+      <div class="invest-grid">
+
+        <!-- 시장정보 -->
+        <div class="invest-group">
+          <div class="invest-group-title">시장정보</div>
+          <div class="invest-row">
+            <span class="invest-label">시가총액</span>
+            <span class="invest-value" id="iv-marketCap">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">상장주식수</span>
+            <span class="invest-value" id="iv-shares">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">액면가</span>
+            <span class="invest-value" id="iv-faceVal">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">매매단위</span>
+            <span class="invest-value" id="iv-tradeUnit">1주</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">결산월</span>
+            <span class="invest-value" id="iv-settle">—</span>
+          </div>
+        </div>
+
+        <!-- 투자지표 -->
+        <div class="invest-group">
+          <div class="invest-group-title">투자지표</div>
+          <div class="invest-row">
+            <span class="invest-label">PER</span>
+            <span class="invest-value accent" id="iv-per">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">EPS</span>
+            <span class="invest-value" id="iv-eps">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">PBR</span>
+            <span class="invest-value accent" id="iv-pbr">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">BPS</span>
+            <span class="invest-value" id="iv-bps">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">동일업종 PER</span>
+            <span class="invest-value" id="iv-indPer">—</span>
+          </div>
+        </div>
+
+        <!-- 52주 정보 -->
+        <div class="invest-group">
+          <div class="invest-group-title">52주 최고 / 최저</div>
+          <div class="invest-row">
+            <span class="invest-label">52주 최고</span>
+            <span class="invest-value up" id="iv-high52">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">최고가 대비</span>
+            <span class="invest-value" id="iv-high52Diff">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">52주 최저</span>
+            <span class="invest-value down" id="iv-low52">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">최저가 대비</span>
+            <span class="invest-value" id="iv-low52Diff">—</span>
+          </div>
+        </div>
+
+        <!-- 외국인 보유 -->
+        <div class="invest-group">
+          <div class="invest-group-title">외국인 보유현황</div>
+          <div class="invest-row">
+            <span class="invest-label">외국인 한도</span>
+            <span class="invest-value" id="iv-frgnLimit">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">외국인 보유</span>
+            <span class="invest-value" id="iv-frgnHold">—</span>
+          </div>
+          <div class="invest-row">
+            <span class="invest-label">소진율</span>
+            <span class="invest-value accent" id="iv-frgnRate">—</span>
+          </div>
+          <div class="frgn-bar-wrap">
+            <div class="frgn-bar-track">
+              <div class="frgn-bar-fill" id="iv-frgnBar" style="width:0%"></div>
+            </div>
+            <div class="frgn-bar-label">
+              <span>0%</span>
+              <span id="iv-frgnBarLabel">—</span>
+              <span>100%</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- 배당 -->
     <div class="dividend-section">
       <div class="div-item">
@@ -626,6 +816,14 @@
 
     document.getElementById('resultCard').style.display = 'block';
     document.getElementById('chartSection').style.display = 'block';
+
+    // 투자정보 패널 (한국 주식만)
+    if (isKR) {
+      document.getElementById('investSection').style.display = 'block';
+      renderInvestPanel(d, currency);
+    } else {
+      document.getElementById('investSection').style.display = 'none';
+    }
     currentChartTicker = d.ticker;
     currentPrevClose = d.prev_close;
     currentMarket = d.market;
@@ -701,6 +899,75 @@
     if (cap >= 1e8) return `${(cap/1e8).toFixed(0)}억`;
     if (cap >= 1e6) return `${currency}${(cap/1e6).toFixed(1)}M`;
     return cap.toLocaleString();
+  }
+
+  function renderInvestPanel(d, currency) {
+    const fmt = (v, suffix='') => v != null ? v.toLocaleString('ko-KR', {maximumFractionDigits:0}) + suffix : '—';
+    const fmtF = (v, d=2) => v != null ? v.toFixed(d) : '—';
+
+    // 시장정보
+    setIV('iv-marketCap', d.market_cap != null ? fmtCap(d.market_cap, currency) : null);
+    setIV('iv-shares', d.listed_shares != null ? fmt(d.listed_shares) + '주' : null);
+    setIV('iv-faceVal', d.face_value != null ? '₩' + fmt(d.face_value) : null);
+    setIV('iv-tradeUnit', '1주');
+    setIV('iv-settle', d.settle_month ? d.settle_month + '월' : null);
+
+    // 투자지표
+    setIV('iv-per', d.per != null ? fmtF(d.per) + '배' : null, 'accent');
+    setIV('iv-eps', d.eps != null ? '₩' + fmt(d.eps) : null);
+    setIV('iv-pbr', d.pbr != null ? fmtF(d.pbr) + '배' : null, 'accent');
+    setIV('iv-bps', d.bps != null ? '₩' + fmt(d.bps) : null);
+    setIV('iv-indPer', d.same_ind_per != null ? fmtF(d.same_ind_per) + '배' : null);
+
+    // 52주
+    const price = d.current_price;
+    const h52 = d.high_52w, l52 = d.low_52w;
+    setIV('iv-high52', h52 != null ? '₩' + fmt(h52) : null, 'up');
+    setIV('iv-low52', l52 != null ? '₩' + fmt(l52) : null, 'down');
+    if (h52 && price) {
+      const diff = ((price - h52) / h52 * 100);
+      const sign = diff >= 0 ? '+' : '';
+      const el = document.getElementById('iv-high52Diff');
+      el.textContent = `${sign}${diff.toFixed(2)}%`;
+      el.className = 'invest-value ' + (diff >= 0 ? 'up' : 'down');
+    }
+    if (l52 && price) {
+      const diff = ((price - l52) / l52 * 100);
+      const sign = diff >= 0 ? '+' : '';
+      const el = document.getElementById('iv-low52Diff');
+      el.textContent = `${sign}${diff.toFixed(2)}%`;
+      el.className = 'invest-value ' + (diff >= 0 ? 'up' : 'down');
+    }
+
+    // 외국인 보유
+    const frgnLimit = d.frgn_limit_qty;
+    const frgnHold  = d.frgn_hold_qty;
+    const frgnRate  = d.frgn_exhaust_rate;
+    setIV('iv-frgnLimit', frgnLimit != null ? fmt(frgnLimit) + '주' : null);
+    setIV('iv-frgnHold',  frgnHold  != null ? fmt(frgnHold)  + '주' : null);
+    if (frgnRate != null) {
+      const el = document.getElementById('iv-frgnRate');
+      el.textContent = fmtF(frgnRate) + '%';
+      el.className = 'invest-value accent';
+      const pct = Math.min(100, Math.max(0, frgnRate));
+      document.getElementById('iv-frgnBar').style.width = pct + '%';
+      document.getElementById('iv-frgnBarLabel').textContent = fmtF(frgnRate) + '%';
+    } else {
+      setIV('iv-frgnRate', null);
+      document.getElementById('iv-frgnBarLabel').textContent = '정보 없음';
+    }
+  }
+
+  function setIV(id, val, cls = '') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (val != null) {
+      el.textContent = val;
+      el.className = 'invest-value' + (cls ? ' ' + cls : '');
+    } else {
+      el.textContent = '정보 없음';
+      el.className = 'invest-value na';
+    }
   }
 
   function showLoading(show) { document.getElementById('loading').style.display = show ? 'block' : 'none'; }

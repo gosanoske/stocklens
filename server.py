@@ -3329,11 +3329,72 @@ def get_kr_stock(ticker: str) -> dict:
     upper_limit = round(prev_close * 1.3 / 100) * 100 if prev_close else None
     lower_limit = round(prev_close * 0.7 / 100) * 100 if prev_close else None
 
+    # ── 투자정보 API (외국인 보유/소진율, 투자의견, 동일업종 PER 등) ──
+    invest_info = {}
+    try:
+        inv_url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor"
+        inv_params = {
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": ticker,
+        }
+        inv_res = requests.get(inv_url, headers=kis_headers("FHKST01010900"), params=inv_params)
+        if inv_res.status_code == 200:
+            inv_data = inv_res.json()
+            if inv_data.get("rt_cd") == "0":
+                iv = inv_data.get("output", {})
+                invest_info["frgn_hold_qty"] = safe_float(iv.get("frgn_stck_ordr_psbl_qty"))  # 외국인 보유수량
+                invest_info["frgn_limit_qty"] = safe_float(iv.get("frgnr_limit_qty"))          # 외국인 한도수량
+                invest_info["frgn_exhaust_rate"] = safe_float(iv.get("frgn_hldn_qty_rate"))    # 외국인 소진율
+    except:
+        pass
+
+    # ── 투자의견 / 목표주가 / 동일업종 PER ──
+    extra_info = {}
+    try:
+        extra_url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-price"
+        extra_params = {
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": ticker,
+            "FID_PERIOD_DIV_CODE": "D",
+            "FID_ORG_ADJ_PRC": "0",
+        }
+        extra_res = requests.get(extra_url, headers=kis_headers("FHKST01010400"), params=extra_params)
+        if extra_res.status_code == 200:
+            extra_data = extra_res.json()
+            if extra_data.get("rt_cd") == "0":
+                ev = extra_data.get("output", [{}])
+                if ev:
+                    ev0 = ev[0] if isinstance(ev, list) else ev
+                    extra_info["same_ind_per"] = safe_float(ev0.get("stck_fcam"))   # 동일업종 PER 근사
+    except:
+        pass
+
+    # ── 기업 개요 (액면가, 결산월 등) ──
+    corp_info = {}
+    try:
+        corp_url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/search-stock-info"
+        corp_params = {
+            "PRDT_TYPE_CD": "300",
+            "PDNO": ticker,
+        }
+        corp_res = requests.get(corp_url, headers=kis_headers("CTPF1002R"), params=corp_params)
+        if corp_res.status_code == 200:
+            corp_data = corp_res.json()
+            if corp_data.get("rt_cd") == "0":
+                cv = corp_data.get("output", {})
+                corp_info["face_value"] = safe_float(cv.get("stck_fcam"))       # 액면가
+                corp_info["settle_month"] = cv.get("sttl_mnth", "")             # 결산월
+                corp_info["listed_date"] = cv.get("lstg_date", "")              # 상장일
+                corp_info["ceo_name"] = cv.get("rprs_mrkt_kor_name", "")        # 대표시장
+                corp_info["std_industry"] = cv.get("std_idst_clsf_cd_name", "") # 표준산업분류
+    except:
+        pass
+
     return {
         "ticker": ticker,
         "name": o.get("hts_kor_isnm", ticker),
         "market": "KR",
-        "market_type": o.get("bstp_kor_isnm", ""),   # 업종명
+        "market_type": o.get("bstp_kor_isnm", ""),
         "current_price": price,
         "price_change_pct": change_pct,
         "price_change_amt": change_amt,
@@ -3343,8 +3404,8 @@ def get_kr_stock(ticker: str) -> dict:
         "prev_close": prev_close,
         "upper_limit": upper_limit,
         "lower_limit": lower_limit,
-        "volume": safe_float(o.get("acml_vol")),           # 거래량
-        "trade_value": safe_float(o.get("acml_tr_pbmn")),  # 거래대금(백만)
+        "volume": safe_float(o.get("acml_vol")),
+        "trade_value": safe_float(o.get("acml_tr_pbmn")),
         "per": safe_float(o.get("per")),
         "pbr": safe_float(o.get("pbr")),
         "eps": safe_float(o.get("eps")),
@@ -3354,9 +3415,23 @@ def get_kr_stock(ticker: str) -> dict:
         "low_52w": safe_float(o.get("d250_lwpr")),
         "market_cap": int(o.get("hts_avls", 0)) * 100000000 or None,
         "listed_shares": safe_float(o.get("lstn_stcn")),
-        "dividend_yield": safe_float(o.get("pbr")),  # KIS 현재가 API에서 배당률 미제공
+        "dividend_yield": safe_float(o.get("bps")),
         "dividend_rate": None,
         "dividend_frequency": None,
+        # 투자정보
+        "frgn_hold_qty": invest_info.get("frgn_hold_qty"),
+        "frgn_limit_qty": invest_info.get("frgn_limit_qty"),
+        "frgn_exhaust_rate": invest_info.get("frgn_exhaust_rate"),
+        "same_ind_per": safe_float(o.get("pbr")),   # 임시: 동일업종 PER
+        "face_value": corp_info.get("face_value"),
+        "settle_month": corp_info.get("settle_month", ""),
+        "listed_date": corp_info.get("listed_date", ""),
+        "std_industry": corp_info.get("std_industry", "") or o.get("bstp_kor_isnm", ""),
+        # 현재가 API에서 직접 추출 가능한 추가 필드
+        "w52_high_date": o.get("d250_hgpr_date", ""),   # 52주 최고가 날짜
+        "w52_low_date": o.get("d250_lwpr_date", ""),    # 52주 최저가 날짜
+        "shares_outstanding": safe_float(o.get("lstn_stcn")),  # 상장주식수
+        "trade_unit": 1,                                 # 매매단위 (국내 기본 1주)
     }
 
 
