@@ -1192,6 +1192,12 @@
       c: d.close,
     }));
 
+    // 각 봉의 기준가 = 이전 봉 종가 (index 0은 currentPrevClose 사용)
+    const prevCloseArr = candleData.map((d, i) => {
+      if (i === 0) return currentPrevClose || d.o;
+      return candleData[i - 1].c;
+    });
+
     const ctx = document.getElementById('priceChart').getContext('2d');
     chartInstance = new Chart(ctx, {
       type: 'candlestick',
@@ -1229,19 +1235,29 @@
             callbacks: {
               title: items => labels[items[0].dataIndex] || '',
               label: item => {
-                const d = candleData[item.dataIndex];
+                const idx = item.dataIndex;
+                const d = candleData[idx];
                 if (!d) return '';
                 const fmt = v => market === 'KR'
                   ? '₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
                   : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-                const chgPct = d.o ? ((d.c - d.o) / d.o * 100) : 0;
+
+                // 이전 봉 종가 대비 등락
+                const prevC = prevCloseArr[idx];
+                const chgAmt = prevC ? (d.c - prevC) : 0;
+                const chgPct = prevC ? (chgAmt / prevC * 100) : 0;
                 const sign = chgPct >= 0 ? '+' : '';
+                const arrow = chgPct > 0 ? '▲' : chgPct < 0 ? '▼' : '─';
+                const amtStr = market === 'KR'
+                  ? `${sign}₩${Math.abs(chgAmt).toLocaleString('ko-KR', {maximumFractionDigits:0})}`
+                  : `${sign}$${Math.abs(chgAmt).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+
                 return [
                   `  시가  ${fmt(d.o)}`,
                   `  고가  ${fmt(d.h)}`,
                   `  저가  ${fmt(d.l)}`,
                   `  종가  ${fmt(d.c)}`,
-                  `  등락  ${sign}${chgPct.toFixed(2)}%`,
+                  `  등락  ${arrow} ${amtStr} (${sign}${chgPct.toFixed(2)}%)`,
                 ];
               }
             }
