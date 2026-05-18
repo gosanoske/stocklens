@@ -1063,10 +1063,17 @@
     const closes = data.map(d => d.close);
     const first = closes[0];
     const last = closes[closes.length - 1];
-    const basePrice = currentPrevClose || last;
     const isUp = last >= (currentPrevClose || first);
     const lineColor = isUp ? '#ff4757' : '#4a9eff';
     const fillColor = isUp ? 'rgba(255,71,87,0.08)' : 'rgba(74,158,255,0.08)';
+
+    // 각 포인트의 전일 종가 배열 구성
+    // - index 0: API에서 받은 currentPrevClose (검색 종목의 실제 전일가)
+    // - index N: closes[N-1] (바로 이전 봉의 종가)
+    const prevCloses = closes.map((c, i) => {
+      if (i === 0) return currentPrevClose || c;
+      return closes[i - 1];
+    });
 
     const ctx = document.getElementById('priceChart').getContext('2d');
     chartInstance = new Chart(ctx, {
@@ -1101,14 +1108,20 @@
             bodyFont: { family: 'JetBrains Mono', size: 13 },
             callbacks: {
               label: ctx => {
+                const idx = ctx.dataIndex;
                 const v = ctx.parsed.y;
+                const prev = prevCloses[idx];
                 const priceStr = market === 'KR'
                   ? '  ₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
                   : '  $' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-                const diffPct = basePrice ? ((v - basePrice) / basePrice * 100) : 0;
+                const diffPct = prev ? ((v - prev) / prev * 100) : 0;
+                const diffAmt = prev ? (v - prev) : 0;
                 const sign = diffPct >= 0 ? '+' : '';
                 const arrow = diffPct > 0 ? '▲' : diffPct < 0 ? '▼' : '─';
-                return [priceStr, `  ${arrow} 전일 대비 ${sign}${diffPct.toFixed(2)}%`];
+                const amtStr = market === 'KR'
+                  ? `${sign}₩${Math.abs(diffAmt).toLocaleString('ko-KR', {maximumFractionDigits:0})}`
+                  : `${sign}$${Math.abs(diffAmt).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+                return [priceStr, `  ${arrow} ${amtStr} (${sign}${diffPct.toFixed(2)}%)`];
               }
             }
           }
