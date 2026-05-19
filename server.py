@@ -3867,20 +3867,19 @@ def get_kr_index(iscd: str, name: str) -> dict:
     o = data.get("output", {})
     price      = safe_float(o.get("bstp_nmix_prpr"))
     prev       = safe_float(o.get("bstp_nmix_prdy_clpr"))
-    # change_amt: 전일대비 부호 포함 필드 우선, 없으면 직접 계산
+    # 전일 대비 변동금액 (부호 포함)
     change_amt = safe_float(o.get("bstp_nmix_prdy_vrss"))
     if change_amt is None and price and prev:
         change_amt = price - prev
-    # change_pct: prdy_ctrt 필드 (부호 포함 문자열 → float)
-    pct_raw = o.get("prdy_ctrt", "")
+    # 전일 대비 변동률 → 실제 필드명: bstp_nmix_prdy_ctrt
+    pct_raw = o.get("bstp_nmix_prdy_ctrt", "")
     try:
         change_pct = float(str(pct_raw).replace("+", "").replace(",", ""))
     except:
         change_pct = ((price - prev) / prev * 100) if price and prev else None
-    # 부호 방향 검증: change_amt 와 change_pct 방향 일치 확인
-    if change_amt is not None and change_pct is not None:
-        if (change_amt >= 0) != (change_pct >= 0):
-            change_pct = -change_pct
+    # 이전 종가가 없으면 현재가 - 변동금액으로 계산
+    if prev is None and price and change_amt:
+        prev = price - change_amt
     return {
         "name": name,
         "price": price,
