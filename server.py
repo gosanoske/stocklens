@@ -3930,12 +3930,21 @@ def get_kr_index_chart(iscd: str) -> list:
     return result
 
 
-def get_nq_futures() -> dict:
-    """나스닥100 선물 조회 (NQc1 → 실패 시 QQQ 대체)"""
+def get_overseas_futures(excd: str, symb: str, name: str) -> dict:
+    """해외 선물/지수 범용 조회"""
     url = f"{KIS_BASE_URL}/uapi/overseas-price/v1/quotations/price"
-    name = "나스닥100선물"
-    for excd, symb in [("CME", "NQc1"), ("NAS", "QQQ")]:
-        params = {"AUTH": "", "EXCD": excd, "SYMB": symb}
+    candidates = [(excd, symb)]
+    # 폴백 후보
+    fallbacks = {
+        "NQc1":  [("CME", "NQc1"), ("NAS", "QQQ")],
+        "ESc1":  [("CME", "ESc1"), ("NYS", "SPY")],
+        "VXc1":  [("CME", "VXc1"), ("NYS", "VIXY")],
+    }
+    if symb in fallbacks:
+        candidates = fallbacks[symb]
+
+    for ex, sy in candidates:
+        params = {"AUTH": "", "EXCD": ex, "SYMB": sy}
         res = requests.get(url, headers=kis_headers("HHDFS00000300"), params=params)
         if res.status_code == 200:
             data = res.json()
@@ -3945,17 +3954,16 @@ def get_nq_futures() -> dict:
                 prev  = safe_float(o.get("base"))
                 change_amt = (price - prev) if price and prev else None
                 change_pct = ((price - prev) / prev * 100) if price and prev else None
-                if symb == "QQQ":
-                    name = "나스닥100(QQQ)"
+                display_name = name if sy == symb else f"{name}({sy})"
                 return {
-                    "name": name,
+                    "name": display_name,
                     "price": price,
                     "change_amt": change_amt,
                     "change_pct": change_pct,
                     "prev_close": prev,
-                    "open":  safe_float(o.get("open")),
-                    "high":  safe_float(o.get("high")),
-                    "low":   safe_float(o.get("low")),
+                    "high": safe_float(o.get("high")),
+                    "low":  safe_float(o.get("low")),
+                    "time": o.get("t_time", ""),
                     "error": False,
                 }
     return {"name": name, "error": True}
@@ -3963,8 +3971,10 @@ def get_nq_futures() -> dict:
 
 @app.get("/indices")
 def get_indices():
-    """코스피 / 코스닥 / 나스닥100선물 현재 지수 + 당일 미니 차트"""
+    """코스피 / 코스닥 / US Tech 100 선물 / S&P 500 VIX 선물"""
     results = {}
+
+    # 코스피
     try:
         kospi = get_kr_index("0001", "코스피")
         kospi["chart"] = get_kr_index_chart("0001")
@@ -3972,6 +3982,7 @@ def get_indices():
     except Exception:
         results["kospi"] = {"name": "코스피", "error": True}
 
+    # 코스닥
     try:
         kosdaq = get_kr_index("1001", "코스닥")
         kosdaq["chart"] = get_kr_index_chart("1001")
@@ -3979,9 +3990,16 @@ def get_indices():
     except Exception:
         results["kosdaq"] = {"name": "코스닥", "error": True}
 
+    # US Tech 100 선물 (나스닥100)
     try:
-        results["nq"] = get_nq_futures()
+        results["nq"] = get_overseas_futures("CME", "NQc1", "US Tech 100 선물")
     except Exception:
-        results["nq"] = {"name": "나스닥100선물", "error": True}
+        results["nq"] = {"name": "US Tech 100 선물", "error": True}
+
+    # S&P 500 VIX 선물
+    try:
+        results["vix"] = get_overseas_futures("CME", "VXc1", "S&P 500 VIX 선물")
+    except Exception:
+        results["vix"] = {"name": "S&P 500 VIX 선물", "error": True}
 
     return results

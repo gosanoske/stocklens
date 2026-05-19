@@ -418,60 +418,88 @@
     .invest-group { border-right: none; }
   }
 
-  /* ── 지수 바 ── */
-  .indices-bar {
+  /* ── 지수 테이블 ── */
+  .indices-wrap {
     position: relative; z-index: 10;
-    display: flex;
-    gap: 1px;
-    background: var(--border);
+    max-width: 900px;
+    margin: 20px auto 0;
+    padding: 0 24px;
+  }
+  .indices-header-row {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.2fr 1.2fr 1.2fr 1fr;
+    padding: 6px 14px;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 0;
   }
-  .index-card {
-    flex: 1;
-    background: var(--surface);
-    padding: 10px 16px 8px;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    cursor: default;
-    transition: background 0.15s;
-    min-width: 0;
-  }
-  .index-card:hover { background: #161820; }
-  .index-info { flex: 1; min-width: 0; }
-  .index-name {
-    font-size: 0.65rem;
+  .indices-header-row span {
+    font-size: 0.62rem;
     color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
     letter-spacing: 1px;
-    font-family: 'JetBrains Mono', monospace;
-    margin-bottom: 3px;
+    text-align: right;
   }
-  .index-price {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: -0.5px;
+  .indices-header-row span:first-child { text-align: left; }
+
+  .indices-table {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
   }
-  .index-change {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.72rem;
-    margin-top: 2px;
+  .index-row {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.2fr 1.2fr 1.2fr 1fr;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.12s;
   }
-  .index-chart-wrap {
-    width: 90px;
-    height: 40px;
+  .index-row:last-child { border-bottom: none; }
+  .index-row:hover { background: rgba(255,255,255,0.02); }
+
+  .idx-name-col {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .idx-flag {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
   }
-  .index-chart-wrap canvas { width: 100% !important; height: 100% !important; }
-  .index-up   { color: var(--red); }
-  .index-down { color: #4a9eff; }
-  .index-flat { color: var(--muted); }
-  .index-loading { color: var(--muted); font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; }
+  .idx-flag.kr { background: rgba(124,58,237,0.2); color: #a78bfa; }
+  .idx-flag.us { background: rgba(0,229,255,0.1);  color: var(--accent); }
+  .idx-name-text {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .idx-col {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text);
+  }
+  .idx-col.up   { color: var(--red); }
+  .idx-col.down { color: #4a9eff; }
+  .idx-col.muted { color: var(--muted); font-size: 0.72rem; }
+
+  .idx-time-col {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+  .idx-loading { color: var(--muted); font-size: 0.72rem; }
 
   @media (max-width: 640px) {
-    .indices-bar { flex-direction: column; }
-    .index-chart-wrap { width: 70px; }
+    .indices-wrap { padding: 0 16px; }
+    .indices-header-row,
+    .index-row { grid-template-columns: 2fr 1fr 1fr 1fr; }
+    .idx-high-col, .idx-low-col { display: none; }
   }
 </style>
 </head>
@@ -482,31 +510,70 @@
   <div class="logo-sub">주식 종목 검색</div>
 </header>
 
-<!-- 지수 바 -->
-<div class="indices-bar" id="indicesBar">
-  <div class="index-card">
-    <div class="index-info">
-      <div class="index-name">KOSPI</div>
-      <div class="index-price index-loading" id="idx-kospi-price">로딩중...</div>
-      <div class="index-change" id="idx-kospi-change">—</div>
-    </div>
-    <div class="index-chart-wrap"><canvas id="idx-kospi-chart"></canvas></div>
+<!-- 지수 테이블 -->
+<div class="indices-wrap">
+  <div class="indices-header-row">
+    <span>종목명</span>
+    <span>종가</span>
+    <span class="idx-high-col">고가</span>
+    <span class="idx-low-col">저가</span>
+    <span>변동</span>
+    <span>변동%</span>
   </div>
-  <div class="index-card">
-    <div class="index-info">
-      <div class="index-name">KOSDAQ</div>
-      <div class="index-price index-loading" id="idx-kosdaq-price">로딩중...</div>
-      <div class="index-change" id="idx-kosdaq-change">—</div>
+  <div class="indices-table">
+
+    <!-- 코스피 -->
+    <div class="index-row">
+      <div class="idx-name-col">
+        <div class="idx-flag kr">K</div>
+        <span class="idx-name-text">코스피</span>
+      </div>
+      <div class="idx-col" id="idx-kospi-price">—</div>
+      <div class="idx-col idx-high-col" id="idx-kospi-high">—</div>
+      <div class="idx-col idx-low-col" id="idx-kospi-low">—</div>
+      <div class="idx-col" id="idx-kospi-amt">—</div>
+      <div class="idx-col" id="idx-kospi-pct">—</div>
     </div>
-    <div class="index-chart-wrap"><canvas id="idx-kosdaq-chart"></canvas></div>
-  </div>
-  <div class="index-card">
-    <div class="index-info">
-      <div class="index-name" id="idx-nq-name">NQ100 선물</div>
-      <div class="index-price index-loading" id="idx-nq-price">로딩중...</div>
-      <div class="index-change" id="idx-nq-change">—</div>
+
+    <!-- 코스닥 -->
+    <div class="index-row">
+      <div class="idx-name-col">
+        <div class="idx-flag kr">K</div>
+        <span class="idx-name-text">코스닥</span>
+      </div>
+      <div class="idx-col" id="idx-kosdaq-price">—</div>
+      <div class="idx-col idx-high-col" id="idx-kosdaq-high">—</div>
+      <div class="idx-col idx-low-col" id="idx-kosdaq-low">—</div>
+      <div class="idx-col" id="idx-kosdaq-amt">—</div>
+      <div class="idx-col" id="idx-kosdaq-pct">—</div>
     </div>
-    <div class="index-chart-wrap"><canvas id="idx-nq-chart"></canvas></div>
+
+    <!-- US Tech 100 선물 -->
+    <div class="index-row">
+      <div class="idx-name-col">
+        <div class="idx-flag us">N</div>
+        <span class="idx-name-text" id="idx-nq-name">US Tech 100 선물</span>
+      </div>
+      <div class="idx-col" id="idx-nq-price">—</div>
+      <div class="idx-col idx-high-col" id="idx-nq-high">—</div>
+      <div class="idx-col idx-low-col" id="idx-nq-low">—</div>
+      <div class="idx-col" id="idx-nq-amt">—</div>
+      <div class="idx-col" id="idx-nq-pct">—</div>
+    </div>
+
+    <!-- S&P 500 VIX 선물 -->
+    <div class="index-row">
+      <div class="idx-name-col">
+        <div class="idx-flag us">V</div>
+        <span class="idx-name-text" id="idx-vix-name">S&P 500 VIX 선물</span>
+      </div>
+      <div class="idx-col" id="idx-vix-price">—</div>
+      <div class="idx-col idx-high-col" id="idx-vix-high">—</div>
+      <div class="idx-col idx-low-col" id="idx-vix-low">—</div>
+      <div class="idx-col" id="idx-vix-amt">—</div>
+      <div class="idx-col" id="idx-vix-pct">—</div>
+    </div>
+
   </div>
 </div>
 
@@ -790,62 +857,62 @@
 <script>
   const API_BASE = 'https://stocklens-rxli.onrender.com';
 
-  // ── 지수 바 ──
+  // ── 지수 테이블 ──
   const miniCharts = {};
 
-  function renderMiniChart(canvasId, chartData, isUp) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas || !chartData || chartData.length < 2) return;
-    const closes = chartData.map(d => d.close).filter(v => v != null);
-    if (closes.length < 2) return;
-    const color = isUp ? '#ff4757' : '#4a9eff';
-    const fill  = isUp ? 'rgba(255,71,87,0.15)' : 'rgba(74,158,255,0.15)';
-    if (miniCharts[canvasId]) { miniCharts[canvasId].destroy(); }
-    miniCharts[canvasId] = new Chart(canvas.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: closes.map((_, i) => i),
-        datasets: [{ data: closes, borderColor: color, backgroundColor: fill,
-          borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.3 }]
-      },
-      options: {
-        responsive: false,
-        animation: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: {
-          x: { display: false },
-          y: { display: false }
-        }
-      }
-    });
-  }
+  function setIndexRow(key, data) {
+    const fmtNum = (v, dec=2) => v != null
+      ? v.toLocaleString('ko-KR', {minimumFractionDigits: dec, maximumFractionDigits: dec})
+      : '—';
 
-  function setIndexCard(key, data) {
     if (!data || data.error) {
-      document.getElementById(`idx-${key}-price`).textContent = '조회 실패';
+      ['price','high','low','amt','pct'].forEach(f => {
+        const el = document.getElementById(`idx-${key}-${f}`);
+        if (el) { el.textContent = '—'; el.className = 'idx-col muted'; }
+      });
       return;
     }
-    const priceEl  = document.getElementById(`idx-${key}-price`);
-    const changeEl = document.getElementById(`idx-${key}-change`);
-    const isUp = (data.change_pct ?? 0) >= 0;
-    const cls  = isUp ? 'index-up' : 'index-down';
-    const sign = isUp ? '+' : '';
-    const fmt  = v => v != null ? v.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) : '—';
 
-    priceEl.textContent = fmt(data.price);
-    priceEl.className = `index-price ${cls}`;
+    const isUp   = (data.change_pct ?? 0) > 0;
+    const isDown = (data.change_pct ?? 0) < 0;
+    const cls    = isUp ? 'idx-col up' : isDown ? 'idx-col down' : 'idx-col';
+    const sign   = isUp ? '+' : '';
+    const arrow  = isUp ? '▲' : isDown ? '▼' : '─';
 
-    const amt = data.change_amt != null ? (isUp ? '▲' : '▼') + ' ' + Math.abs(data.change_amt).toLocaleString('ko-KR', {maximumFractionDigits:2}) : '';
-    const pct = data.change_pct != null ? ` (${sign}${data.change_pct.toFixed(2)}%)` : '';
-    changeEl.textContent = amt + pct;
-    changeEl.className = `index-change ${cls}`;
+    // 종가
+    const priceEl = document.getElementById(`idx-${key}-price`);
+    if (priceEl) { priceEl.textContent = fmtNum(data.price); priceEl.className = cls; }
 
-    if (key === 'nq' && data.name) {
-      document.getElementById('idx-nq-name').textContent = data.name;
+    // 고가
+    const highEl = document.getElementById(`idx-${key}-high`);
+    if (highEl) { highEl.textContent = fmtNum(data.high); highEl.className = 'idx-col up'; }
+
+    // 저가
+    const lowEl = document.getElementById(`idx-${key}-low`);
+    if (lowEl) { lowEl.textContent = fmtNum(data.low); lowEl.className = 'idx-col down'; }
+
+    // 변동 금액
+    const amtEl = document.getElementById(`idx-${key}-amt`);
+    if (amtEl) {
+      const amt = data.change_amt != null
+        ? `${arrow} ${sign}${fmtNum(Math.abs(data.change_amt))}`
+        : '—';
+      amtEl.textContent = amt;
+      amtEl.className = cls;
     }
-    if (data.chart && data.chart.length > 1) {
-      renderMiniChart(`idx-${key}-chart`, data.chart, isUp);
+
+    // 변동 %
+    const pctEl = document.getElementById(`idx-${key}-pct`);
+    if (pctEl) {
+      pctEl.textContent = data.change_pct != null
+        ? `${sign}${data.change_pct.toFixed(2)}%`
+        : '—';
+      pctEl.className = cls;
     }
+
+    // 이름 업데이트 (폴백 종목일 때)
+    const nameEl = document.getElementById(`idx-${key}-name`);
+    if (nameEl && data.name) nameEl.textContent = data.name;
   }
 
   async function loadIndices() {
@@ -853,18 +920,20 @@
       const res = await fetch(`${API_BASE}/indices`);
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setIndexCard('kospi',  data.kospi);
-      setIndexCard('kosdaq', data.kosdaq);
-      setIndexCard('nq',     data.nq);
+      setIndexRow('kospi',  data.kospi);
+      setIndexRow('kosdaq', data.kosdaq);
+      setIndexRow('nq',     data.nq);
+      setIndexRow('vix',    data.vix);
     } catch(e) {
-      ['kospi','kosdaq','nq'].forEach(k => {
-        const el = document.getElementById(`idx-${k}-price`);
-        if (el) { el.textContent = '—'; el.className = 'index-price index-flat'; }
+      ['kospi','kosdaq','nq','vix'].forEach(k => {
+        ['price','high','low','amt','pct'].forEach(f => {
+          const el = document.getElementById(`idx-${k}-${f}`);
+          if (el) { el.textContent = '—'; el.className = 'idx-col muted'; }
+        });
       });
     }
   }
 
-  // 페이지 로드 시 즉시 + 1분마다 갱신
   loadIndices();
   setInterval(loadIndices, 60000);
 
