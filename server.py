@@ -3850,3 +3850,138 @@ def get_us_chart(ticker: str, start: str, end: str, div_code: str) -> dict:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+
+def get_kr_index(iscd: str, name: str) -> dict:
+    """코스피/코스닥 지수 조회"""
+    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-index-price"
+    params = {
+        "FID_COND_MRKT_DIV_CODE": "U",
+        "FID_INPUT_ISCD": iscd,
+    }
+    res = requests.get(url, headers=kis_headers("FHPUP02100000"), params=params)
+    if res.status_code != 200:
+        return {"name": name, "error": True}
+    data = res.json()
+    if data.get("rt_cd") != "0":
+        return {"name": name, "error": True}
+    o = data.get("output", {})
+    price      = safe_float(o.get("bstp_nmix_prpr"))
+    prev       = safe_float(o.get("bstp_nmix_prdy_clpr"))
+    change_amt = safe_float(o.get("bstp_nmix_prdy_vrss"))
+    change_pct = safe_float(o.get("prdy_ctrt"))
+    return {
+        "name": name,
+        "price": price,
+        "change_amt": change_amt,
+        "change_pct": change_pct,
+        "prev_close": prev,
+        "open":   safe_float(o.get("bstp_nmix_oprc")),
+        "high":   safe_float(o.get("bstp_nmix_hgpr")),
+        "low":    safe_float(o.get("bstp_nmix_lwpr")),
+        "volume": safe_float(o.get("acml_vol")),
+        "error": False,
+    }
+
+
+def get_kr_index_chart(iscd: str) -> list:
+    """코스피/코스닥 당일 분봉 미니 차트"""
+    from datetime import datetime, timezone, timedelta
+    KST = timezone(timedelta(hours=9))
+    now = datetime.now(KST)
+    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-index-timeprice"
+    all_rows = []
+    current_time = now.strftime("%H%M%S")
+    for _ in range(5):
+        params = {
+            "FID_COND_MRKT_DIV_CODE": "U",
+            "FID_INPUT_ISCD": iscd,
+            "FID_INPUT_HOUR_1": current_time,
+            "FID_PW_DATA_INCU_YN": "Y",
+        }
+        res = requests.get(url, headers=kis_headers("FHPUP02110200"), params=params)
+        if res.status_code != 200:
+            break
+        data = res.json()
+        if data.get("rt_cd") != "0":
+            break
+        rows = data.get("output2", [])
+        if not rows:
+            break
+        all_rows.extend(rows)
+        last_time = rows[-1].get("stck_cntg_hour", "")
+        if not last_time or last_time <= "090000":
+            break
+        current_time = last_time
+        if len(all_rows) >= 80:
+            break
+
+    seen = set()
+    result = []
+    for row in all_rows:
+        t = row.get("stck_cntg_hour", "")
+        if t < "090000" or t in seen:
+            continue
+        seen.add(t)
+        result.append({
+            "time":  f"{t[:2]}:{t[2:4]}",
+            "close": safe_float(row.get("bstp_nmix_prpr")),
+        })
+    result.sort(key=lambda r: r["time"])
+    return result
+
+
+def get_nq_futures() -> dict:
+    """나스닥100 선물 조회 (NQc1 → 실패 시 QQQ 대체)"""
+    url = f"{KIS_BASE_URL}/uapi/overseas-price/v1/quotations/price"
+    name = "나스닥100선물"
+    for excd, symb in [("CME", "NQc1"), ("NAS", "QQQ")]:
+        params = {"AUTH": "", "EXCD": excd, "SYMB": symb}
+        res = requests.get(url, headers=kis_headers("HHDFS00000300"), params=params)
+        if res.status_code == 200:
+            data = res.json()
+            if data.get("rt_cd") == "0":
+                o = data.get("output", {})
+                price = safe_float(o.get("last"))
+                prev  = safe_float(o.get("base"))
+                change_amt = (price - prev) if price and prev else None
+                change_pct = ((price - prev) / prev * 100) if price and prev else None
+                if symb == "QQQ":
+                    name = "나스닥100(QQQ)"
+                return {
+                    "name": name,
+                    "price": price,
+                    "change_amt": change_amt,
+                    "change_pct": change_pct,
+                    "prev_close": prev,
+                    "open":  safe_float(o.get("open")),
+                    "high":  safe_float(o.get("high")),
+                    "low":   safe_float(o.get("low")),
+                    "error": False,
+                }
+    return {"name": name, "error": True}
+
+
+@app.get("/indices")
+def get_indices():
+    """코스피 / 코스닥 / 나스닥100선물 현재 지수 + 당일 미니 차트"""
+    results = {}
+    try:
+        kospi = get_kr_index("0001", "코스피")
+        kospi["chart"] = get_kr_index_chart("0001")
+        results["kospi"] = kospi
+    except Exception:
+        results["kospi"] = {"name": "코스피", "error": True}
+
+    try:
+        kosdaq = get_kr_index("1001", "코스닥")
+        kosdaq["chart"] = get_kr_index_chart("1001")
+        results["kosdaq"] = kosdaq
+    except Exception:
+        results["kosdaq"] = {"name": "코스닥", "error": True}
+
+    try:
+        results["nq"] = get_nq_futures()
+    except Exception:
+        results["nq"] = {"name": "나스닥100선물", "error": True}
+
+    return results

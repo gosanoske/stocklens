@@ -417,6 +417,62 @@
     .invest-grid { grid-template-columns: 1fr; }
     .invest-group { border-right: none; }
   }
+
+  /* ── 지수 바 ── */
+  .indices-bar {
+    position: relative; z-index: 10;
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+  .index-card {
+    flex: 1;
+    background: var(--surface);
+    padding: 10px 16px 8px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    cursor: default;
+    transition: background 0.15s;
+    min-width: 0;
+  }
+  .index-card:hover { background: #161820; }
+  .index-info { flex: 1; min-width: 0; }
+  .index-name {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 3px;
+  }
+  .index-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+  .index-change {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    margin-top: 2px;
+  }
+  .index-chart-wrap {
+    width: 90px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+  .index-chart-wrap canvas { width: 100% !important; height: 100% !important; }
+  .index-up   { color: var(--red); }
+  .index-down { color: #4a9eff; }
+  .index-flat { color: var(--muted); }
+  .index-loading { color: var(--muted); font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; }
+
+  @media (max-width: 640px) {
+    .indices-bar { flex-direction: column; }
+    .index-chart-wrap { width: 70px; }
+  }
 </style>
 </head>
 <body>
@@ -425,6 +481,34 @@
   <div class="logo">StockLens</div>
   <div class="logo-sub">주식 종목 검색</div>
 </header>
+
+<!-- 지수 바 -->
+<div class="indices-bar" id="indicesBar">
+  <div class="index-card">
+    <div class="index-info">
+      <div class="index-name">KOSPI</div>
+      <div class="index-price index-loading" id="idx-kospi-price">로딩중...</div>
+      <div class="index-change" id="idx-kospi-change">—</div>
+    </div>
+    <div class="index-chart-wrap"><canvas id="idx-kospi-chart"></canvas></div>
+  </div>
+  <div class="index-card">
+    <div class="index-info">
+      <div class="index-name">KOSDAQ</div>
+      <div class="index-price index-loading" id="idx-kosdaq-price">로딩중...</div>
+      <div class="index-change" id="idx-kosdaq-change">—</div>
+    </div>
+    <div class="index-chart-wrap"><canvas id="idx-kosdaq-chart"></canvas></div>
+  </div>
+  <div class="index-card">
+    <div class="index-info">
+      <div class="index-name" id="idx-nq-name">NQ100 선물</div>
+      <div class="index-price index-loading" id="idx-nq-price">로딩중...</div>
+      <div class="index-change" id="idx-nq-change">—</div>
+    </div>
+    <div class="index-chart-wrap"><canvas id="idx-nq-chart"></canvas></div>
+  </div>
+</div>
 
 <div class="search-area">
   <div class="search-box">
@@ -705,6 +789,84 @@
 
 <script>
   const API_BASE = 'https://stocklens-rxli.onrender.com';
+
+  // ── 지수 바 ──
+  const miniCharts = {};
+
+  function renderMiniChart(canvasId, chartData, isUp) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !chartData || chartData.length < 2) return;
+    const closes = chartData.map(d => d.close).filter(v => v != null);
+    if (closes.length < 2) return;
+    const color = isUp ? '#ff4757' : '#4a9eff';
+    const fill  = isUp ? 'rgba(255,71,87,0.15)' : 'rgba(74,158,255,0.15)';
+    if (miniCharts[canvasId]) { miniCharts[canvasId].destroy(); }
+    miniCharts[canvasId] = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: closes.map((_, i) => i),
+        datasets: [{ data: closes, borderColor: color, backgroundColor: fill,
+          borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.3 }]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { display: false },
+          y: { display: false }
+        }
+      }
+    });
+  }
+
+  function setIndexCard(key, data) {
+    if (!data || data.error) {
+      document.getElementById(`idx-${key}-price`).textContent = '조회 실패';
+      return;
+    }
+    const priceEl  = document.getElementById(`idx-${key}-price`);
+    const changeEl = document.getElementById(`idx-${key}-change`);
+    const isUp = (data.change_pct ?? 0) >= 0;
+    const cls  = isUp ? 'index-up' : 'index-down';
+    const sign = isUp ? '+' : '';
+    const fmt  = v => v != null ? v.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) : '—';
+
+    priceEl.textContent = fmt(data.price);
+    priceEl.className = `index-price ${cls}`;
+
+    const amt = data.change_amt != null ? (isUp ? '▲' : '▼') + ' ' + Math.abs(data.change_amt).toLocaleString('ko-KR', {maximumFractionDigits:2}) : '';
+    const pct = data.change_pct != null ? ` (${sign}${data.change_pct.toFixed(2)}%)` : '';
+    changeEl.textContent = amt + pct;
+    changeEl.className = `index-change ${cls}`;
+
+    if (key === 'nq' && data.name) {
+      document.getElementById('idx-nq-name').textContent = data.name;
+    }
+    if (data.chart && data.chart.length > 1) {
+      renderMiniChart(`idx-${key}-chart`, data.chart, isUp);
+    }
+  }
+
+  async function loadIndices() {
+    try {
+      const res = await fetch(`${API_BASE}/indices`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setIndexCard('kospi',  data.kospi);
+      setIndexCard('kosdaq', data.kosdaq);
+      setIndexCard('nq',     data.nq);
+    } catch(e) {
+      ['kospi','kosdaq','nq'].forEach(k => {
+        const el = document.getElementById(`idx-${k}-price`);
+        if (el) { el.textContent = '—'; el.className = 'index-price index-flat'; }
+      });
+    }
+  }
+
+  // 페이지 로드 시 즉시 + 1분마다 갱신
+  loadIndices();
+  setInterval(loadIndices, 60000);
 
   function fillSearch(v) {
     document.getElementById('searchInput').value = v;
