@@ -3867,20 +3867,91 @@ def get_kr_index(iscd: str, name: str) -> dict:
     o = data.get("output", {})
     price      = safe_float(o.get("bstp_nmix_prpr"))
     prev       = safe_float(o.get("bstp_nmix_prdy_clpr"))
+    # change_amt: 전일대비 부호 포함 필드 우선, 없으면 직접 계산
     change_amt = safe_float(o.get("bstp_nmix_prdy_vrss"))
-    change_pct = safe_float(o.get("prdy_ctrt"))
+    if change_amt is None and price and prev:
+        change_amt = price - prev
+    # change_pct: prdy_ctrt 필드 (부호 포함 문자열 → float)
+    pct_raw = o.get("prdy_ctrt", "")
+    try:
+        change_pct = float(str(pct_raw).replace("+", "").replace(",", ""))
+    except:
+        change_pct = ((price - prev) / prev * 100) if price and prev else None
+    # 부호 방향 검증: change_amt 와 change_pct 방향 일치 확인
+    if change_amt is not None and change_pct is not None:
+        if (change_amt >= 0) != (change_pct >= 0):
+            change_pct = -change_pct
     return {
         "name": name,
         "price": price,
         "change_amt": change_amt,
         "change_pct": change_pct,
         "prev_close": prev,
-        "open":   safe_float(o.get("bstp_nmix_oprc")),
         "high":   safe_float(o.get("bstp_nmix_hgpr")),
         "low":    safe_float(o.get("bstp_nmix_lwpr")),
-        "volume": safe_float(o.get("acml_vol")),
         "error": False,
     }
+
+
+def get_yahoo_index(symbol: str, name: str) -> dict:
+    """야후 파이낸스 API로 해외 지수/선물 조회"""
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker(symbol)
+        info = ticker.fast_info
+        price      = getattr(info, "last_price", None)
+        prev       = getattr(info, "previous_close", None)
+        day_high   = getattr(info, "day_high", None)
+        day_low    = getattr(info, "day_low", None)
+        change_amt = (price - prev) if price and prev else None
+        change_pct = ((price - prev) / prev * 100) if price and prev else None
+        return {
+            "name": name,
+            "price": round(price, 2) if price else None,
+            "change_amt": round(change_amt, 2) if change_amt else None,
+            "change_pct": round(change_pct, 4) if change_pct else None,
+            "prev_close": round(prev, 2) if prev else None,
+            "high": round(day_high, 2) if day_high else None,
+            "low":  round(day_low, 2) if day_low else None,
+            "error": False,
+        }
+    except Exception as e:
+        return {"name": name, "error": True, "detail": str(e)}
+
+
+@app.get("/indices")
+def get_indices():
+    """코스피 / 코스닥 / US Tech 100 선물 / S&P 500 VIX 선물"""
+    results = {}
+
+    # 코스피
+    try:
+        kospi = get_kr_index("0001", "코스피")
+        results["kospi"] = kospi
+    except Exception:
+        results["kospi"] = {"name": "코스피", "error": True}
+
+    # 코스닥
+    try:
+        kosdaq = get_kr_index("1001", "코스닥")
+        results["kosdaq"] = kosdaq
+    except Exception:
+        results["kosdaq"] = {"name": "코스닥", "error": True}
+
+    # US Tech 100 선물 (NQ=F: 나스닥100 선물)
+    try:
+        results["nq"] = get_yahoo_index("NQ=F", "US Tech 100 선물")
+    except Exception:
+        results["nq"] = {"name": "US Tech 100 선물", "error": True}
+
+    # S&P 500 VIX 선물 (^VIX)
+    try:
+        results["vix"] = get_yahoo_index("^VIX", "S&P 500 VIX")
+    except Exception:
+        results["vix"] = {"name": "S&P 500 VIX", "error": True}
+
+    return results
+
 
 
 def get_kr_index_chart(iscd: str) -> list:
@@ -3928,78 +3999,3 @@ def get_kr_index_chart(iscd: str) -> list:
         })
     result.sort(key=lambda r: r["time"])
     return result
-
-
-def get_overseas_futures(excd: str, symb: str, name: str) -> dict:
-    """해외 선물/지수 범용 조회"""
-    url = f"{KIS_BASE_URL}/uapi/overseas-price/v1/quotations/price"
-    candidates = [(excd, symb)]
-    # 폴백 후보
-    fallbacks = {
-        "NQc1":  [("CME", "NQc1"), ("NAS", "QQQ")],
-        "ESc1":  [("CME", "ESc1"), ("NYS", "SPY")],
-        "VXc1":  [("CME", "VXc1"), ("NYS", "VIXY")],
-    }
-    if symb in fallbacks:
-        candidates = fallbacks[symb]
-
-    for ex, sy in candidates:
-        params = {"AUTH": "", "EXCD": ex, "SYMB": sy}
-        res = requests.get(url, headers=kis_headers("HHDFS00000300"), params=params)
-        if res.status_code == 200:
-            data = res.json()
-            if data.get("rt_cd") == "0":
-                o = data.get("output", {})
-                price = safe_float(o.get("last"))
-                prev  = safe_float(o.get("base"))
-                change_amt = (price - prev) if price and prev else None
-                change_pct = ((price - prev) / prev * 100) if price and prev else None
-                display_name = name if sy == symb else f"{name}({sy})"
-                return {
-                    "name": display_name,
-                    "price": price,
-                    "change_amt": change_amt,
-                    "change_pct": change_pct,
-                    "prev_close": prev,
-                    "high": safe_float(o.get("high")),
-                    "low":  safe_float(o.get("low")),
-                    "time": o.get("t_time", ""),
-                    "error": False,
-                }
-    return {"name": name, "error": True}
-
-
-@app.get("/indices")
-def get_indices():
-    """코스피 / 코스닥 / US Tech 100 선물 / S&P 500 VIX 선물"""
-    results = {}
-
-    # 코스피
-    try:
-        kospi = get_kr_index("0001", "코스피")
-        kospi["chart"] = get_kr_index_chart("0001")
-        results["kospi"] = kospi
-    except Exception:
-        results["kospi"] = {"name": "코스피", "error": True}
-
-    # 코스닥
-    try:
-        kosdaq = get_kr_index("1001", "코스닥")
-        kosdaq["chart"] = get_kr_index_chart("1001")
-        results["kosdaq"] = kosdaq
-    except Exception:
-        results["kosdaq"] = {"name": "코스닥", "error": True}
-
-    # US Tech 100 선물 (나스닥100)
-    try:
-        results["nq"] = get_overseas_futures("CME", "NQc1", "US Tech 100 선물")
-    except Exception:
-        results["nq"] = {"name": "US Tech 100 선물", "error": True}
-
-    # S&P 500 VIX 선물
-    try:
-        results["vix"] = get_overseas_futures("CME", "VXc1", "S&P 500 VIX 선물")
-    except Exception:
-        results["vix"] = {"name": "S&P 500 VIX 선물", "error": True}
-
-    return results
