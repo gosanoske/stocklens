@@ -4,7 +4,9 @@ KRX 전체 종목 한글 검색 지원
 """
 
 import os
+import time
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -3510,16 +3512,28 @@ def serve_frontend():
     return FileResponse("stock_search.html")
 
 
+_search_cache: dict = {}
+_SEARCH_TTL = 10  # 10초 캐시
+
+
 @app.get("/search")
 def search_stock(q: str):
     if not q or len(q.strip()) < 1:
         raise HTTPException(status_code=400, detail="검색어를 입력하세요.")
     ticker = normalize_ticker(q)
+
+    # 캐시 확인
+    cached = _search_cache.get(ticker)
+    if cached and time.time() - cached["ts"] < _SEARCH_TTL:
+        return cached["data"]
+
     try:
         if is_korean(ticker):
-            return get_kr_stock(ticker)
+            result = get_kr_stock(ticker)
         else:
-            return get_us_stock(ticker)
+            result = get_us_stock(ticker)
+        _search_cache[ticker] = {"data": result, "ts": time.time()}
+        return result
     except HTTPException:
         raise
     except Exception as e:
@@ -3933,37 +3947,43 @@ def get_yahoo_index(symbol: str, name: str) -> dict:
         return {"name": name, "error": True, "detail": str(e)}
 
 
+# ── 지수 캐시 ──
+_indices_cache = {"data": None, "ts": 0}
+_INDICES_TTL = 30  # 30초 캐시
+
+
 @app.get("/indices")
 def get_indices():
-    """코스피 / 코스닥 / US Tech 100 선물 / S&P 500 VIX 선물"""
+    """코스피 / 코스닥 / US Tech 100 선물 / S&P 500 VIX 선물 (병렬 + 캐싱)"""
+    global _indices_cache
+    now = time.time()
+
+    # 캐시 유효 시 즉시 반환
+    if _indices_cache["data"] and now - _indices_cache["ts"] < _INDICES_TTL:
+        return _indices_cache["data"]
+
+    tasks = {
+        "kospi":  (get_kr_index,     ("0001", "코스피")),
+        "kosdaq": (get_kr_index,     ("1001", "코스닥")),
+        "nq":     (get_yahoo_index,  ("NQ=F", "US Tech 100 선물")),
+        "vix":    (get_yahoo_index,  ("^VIX", "S&P 500 VIX")),
+    }
+
     results = {}
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(fn, *args): key
+            for key, (fn, args) in tasks.items()
+        }
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                results[key] = future.result()
+            except Exception:
+                results[key] = {"name": tasks[key][1][1], "error": True}
 
-    # 코스피
-    try:
-        kospi = get_kr_index("0001", "코스피")
-        results["kospi"] = kospi
-    except Exception:
-        results["kospi"] = {"name": "코스피", "error": True}
-
-    # 코스닥
-    try:
-        kosdaq = get_kr_index("1001", "코스닥")
-        results["kosdaq"] = kosdaq
-    except Exception:
-        results["kosdaq"] = {"name": "코스닥", "error": True}
-
-    # US Tech 100 선물 (NQ=F: 나스닥100 선물)
-    try:
-        results["nq"] = get_yahoo_index("NQ=F", "US Tech 100 선물")
-    except Exception:
-        results["nq"] = {"name": "US Tech 100 선물", "error": True}
-
-    # S&P 500 VIX 선물 (^VIX)
-    try:
-        results["vix"] = get_yahoo_index("^VIX", "S&P 500 VIX")
-    except Exception:
-        results["vix"] = {"name": "S&P 500 VIX", "error": True}
-
+    _indices_cache["data"] = results
+    _indices_cache["ts"] = now
     return results
 
 
