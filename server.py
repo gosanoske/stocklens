@@ -3893,6 +3893,21 @@ def get_kr_index(iscd: str, name: str) -> dict:
     }
 
 
+@app.get("/debug/index")
+def debug_index(iscd: str = "0001"):
+    """KIS 지수 API 실제 응답 필드 확인용 (개발용)"""
+    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-index-price"
+    params = {
+        "FID_COND_MRKT_DIV_CODE": "U",
+        "FID_INPUT_ISCD": iscd,
+    }
+    res = requests.get(url, headers=kis_headers("FHPUP02100000"), params=params)
+    return {
+        "status_code": res.status_code,
+        "raw": res.json()
+    }
+
+
 def get_yahoo_index(symbol: str, name: str) -> dict:
     """야후 파이낸스 API로 해외 지수/선물 조회"""
     try:
