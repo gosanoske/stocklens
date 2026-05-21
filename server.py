@@ -3935,81 +3935,116 @@ def debug_index(iscd: str = "0001"):
     }
 
 
-def get_yahoo_index(symbol: str, name: str) -> dict:
-    """야후 파이낸스 REST API 직접 호출 - 실시간 데이터 + 장 상태"""
+@app.get("/debug/yahoo")
+def debug_yahoo(symbol: str = "NQ=F"):
+    """야후 파이낸스 API 실제 응답 확인용 (개발용)"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+        "Referer": "https://finance.yahoo.com",
+    }
+    results = {}
+    # v7 quote
     try:
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Accept": "application/json",
-        }
-        params = {
-            "interval": "1m",
-            "range": "1d",
-            "includePrePost": "true",
-        }
-        res = requests.get(url, headers=headers, params=params, timeout=8)
-        if res.status_code != 200:
-            raise Exception(f"HTTP {res.status_code}")
-
-        data = res.json()
-        meta = data.get("chart", {}).get("result", [{}])[0].get("meta", {})
-
-        price      = meta.get("regularMarketPrice")
-        prev       = meta.get("previousClose") or meta.get("chartPreviousClose")
-        day_high   = meta.get("regularMarketDayHigh")
-        day_low    = meta.get("regularMarketDayLow")
-        market_state = meta.get("marketState", "")  # REGULAR, PRE, POST, CLOSED
-        exchange_tz  = meta.get("exchangeTimezoneName", "")
-
-        change_amt = (price - prev) if price and prev else None
-        change_pct = ((price - prev) / prev * 100) if price and prev else None
-
-        # 장 상태 판단
-        # REGULAR: 정규장 열림(초록), PRE/POST: 시간외(노랑), CLOSED: 마감(빨강)
-        if market_state == "REGULAR":
-            market_open = "open"
-        elif market_state in ("PRE", "POSTPOST", "POST"):
-            market_open = "pre_post"
-        else:
-            market_open = "closed"
-
-        return {
-            "name": name,
-            "price": round(price, 4) if price else None,
-            "change_amt": round(change_amt, 4) if change_amt is not None else None,
-            "change_pct": round(change_pct, 4) if change_pct is not None else None,
-            "prev_close": round(prev, 4) if prev else None,
-            "high": round(day_high, 4) if day_high else None,
-            "low":  round(day_low, 4) if day_low else None,
-            "market_state": market_state,
-            "market_open": market_open,
-            "error": False,
-        }
+        url = "https://query1.finance.yahoo.com/v7/finance/quote"
+        params = {"symbols": symbol}
+        res = requests.get(url, headers=headers, params=params, timeout=6)
+        results["v7_status"] = res.status_code
+        results["v7_data"] = res.json() if res.status_code == 200 else res.text[:200]
     except Exception as e:
-        # 폴백: yfinance
-        try:
-            import yfinance as yf
-            ticker = yf.Ticker(symbol)
-            info = ticker.fast_info
-            price = getattr(info, "last_price", None)
-            prev  = getattr(info, "previous_close", None)
+        results["v7_error"] = str(e)
+    # v8 chart
+    try:
+        url2 = f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}"
+        res2 = requests.get(url2, headers=headers, params={"interval":"1m","range":"1d"}, timeout=6)
+        results["v8_status"] = res2.status_code
+        if res2.status_code == 200:
+            meta = res2.json().get("chart", {}).get("result", [{}])[0].get("meta", {})
+            results["v8_meta"] = {k: meta.get(k) for k in ["regularMarketPrice","previousClose","marketState","regularMarketChange","regularMarketChangePercent"]}
+        else:
+            results["v8_data"] = res2.text[:200]
+    except Exception as e:
+        results["v8_error"] = str(e)
+    return results
+
+
+def get_yahoo_index(symbol: str, name: str) -> dict:
+    """야후 파이낸스 v7 quote API - 가장 실시간에 가까운 데이터"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+        "Referer": "https://finance.yahoo.com",
+    }
+    # 1차: v7 quote (가장 빠른 실시간)
+    try:
+        url = "https://query1.finance.yahoo.com/v7/finance/quote"
+        params = {"symbols": symbol, "fields": "regularMarketPrice,regularMarketPreviousClose,regularMarketDayHigh,regularMarketDayLow,regularMarketChange,regularMarketChangePercent,marketState,regularMarketTime"}
+        res = requests.get(url, headers=headers, params=params, timeout=6)
+        if res.status_code == 200:
+            result = res.json().get("quoteResponse", {}).get("result", [])
+            if result:
+                q = result[0]
+                price      = q.get("regularMarketPrice")
+                prev       = q.get("regularMarketPreviousClose")
+                change_amt = q.get("regularMarketChange")
+                change_pct = q.get("regularMarketChangePercent")
+                day_high   = q.get("regularMarketDayHigh")
+                day_low    = q.get("regularMarketDayLow")
+                market_state = q.get("marketState", "CLOSED")
+
+                if market_state == "REGULAR":
+                    market_open = "open"
+                elif market_state in ("PRE", "POST", "POSTPOST"):
+                    market_open = "pre_post"
+                else:
+                    market_open = "closed"
+
+                return {
+                    "name": name,
+                    "price": round(price, 4) if price is not None else None,
+                    "change_amt": round(change_amt, 4) if change_amt is not None else None,
+                    "change_pct": round(change_pct, 4) if change_pct is not None else None,
+                    "prev_close": round(prev, 4) if prev is not None else None,
+                    "high": round(day_high, 4) if day_high else None,
+                    "low":  round(day_low, 4) if day_low else None,
+                    "market_state": market_state,
+                    "market_open": market_open,
+                    "error": False,
+                }
+    except Exception:
+        pass
+
+    # 2차: v8 chart API 폴백
+    try:
+        url = f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}"
+        params = {"interval": "1m", "range": "1d"}
+        res = requests.get(url, headers=headers, params=params, timeout=6)
+        if res.status_code == 200:
+            meta = res.json().get("chart", {}).get("result", [{}])[0].get("meta", {})
+            price      = meta.get("regularMarketPrice")
+            prev       = meta.get("previousClose") or meta.get("chartPreviousClose")
+            day_high   = meta.get("regularMarketDayHigh")
+            day_low    = meta.get("regularMarketDayLow")
+            market_state = meta.get("marketState", "CLOSED")
             change_amt = (price - prev) if price and prev else None
             change_pct = ((price - prev) / prev * 100) if price and prev else None
+            market_open = "open" if market_state == "REGULAR" else "pre_post" if market_state in ("PRE", "POST", "POSTPOST") else "closed"
             return {
                 "name": name,
-                "price": round(price, 4) if price else None,
+                "price": round(price, 4) if price is not None else None,
                 "change_amt": round(change_amt, 4) if change_amt is not None else None,
                 "change_pct": round(change_pct, 4) if change_pct is not None else None,
                 "prev_close": round(prev, 4) if prev else None,
-                "high": round(getattr(info, "day_high", None) or 0, 4) or None,
-                "low":  round(getattr(info, "day_low", None) or 0, 4) or None,
-                "market_state": "UNKNOWN",
-                "market_open": "closed",
+                "high": round(day_high, 4) if day_high else None,
+                "low":  round(day_low, 4) if day_low else None,
+                "market_state": market_state,
+                "market_open": market_open,
                 "error": False,
             }
-        except Exception:
-            return {"name": name, "error": True}
+    except Exception:
+        pass
+
+    return {"name": name, "error": True}
 
 
 # ── 지수 캐시 ──
