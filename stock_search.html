@@ -852,7 +852,7 @@
             <div class="side-item-pct" id="si-kosdaq-pct">—</div>
           </div>
         </div>
-        <div class="side-item" id="si-nq" onclick="setSideChart('nq')">
+        <div class="side-item" id="si-nq">
           <div class="side-item-left">
             <div class="side-item-name">US Tech 100</div>
             <div class="side-item-price" id="si-nq-price">—</div>
@@ -862,14 +862,69 @@
             <div class="side-item-pct" id="si-nq-pct">—</div>
           </div>
         </div>
-        <div class="side-item" id="si-vix" onclick="setSideChart('vix')">
+        <!-- 공포탐욕 지수 (특수 레이아웃) -->
+        <div class="side-item" id="si-feargreed">
           <div class="side-item-left">
-            <div class="side-item-name">S&P 500 VIX</div>
-            <div class="side-item-price" id="si-vix-price">—</div>
+            <div class="side-item-name">공포탐욕 지수</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
+              <div class="side-item-price" id="si-feargreed-price">—</div>
+              <div id="si-feargreed-label" style="font-size:0.68rem;color:var(--muted);font-family:'Noto Sans KR'"></div>
+            </div>
           </div>
           <div class="side-item-right">
-            <div class="side-item-amt" id="si-vix-amt">—</div>
-            <div class="side-item-pct" id="si-vix-pct">—</div>
+            <div id="si-feargreed-bar" style="width:60px;height:6px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden">
+              <div id="si-feargreed-fill" style="height:100%;width:0%;border-radius:3px;transition:width 0.5s"></div>
+            </div>
+          </div>
+        </div>
+        <div class="side-item" id="si-cboe_vix">
+          <div class="side-item-left">
+            <div class="side-item-name">CBOE VIX 지수</div>
+            <div class="side-item-price" id="si-cboe_vix-price">—</div>
+          </div>
+          <div class="side-item-right">
+            <div class="side-item-amt" id="si-cboe_vix-amt">—</div>
+            <div class="side-item-pct" id="si-cboe_vix-pct">—</div>
+          </div>
+        </div>
+        <div class="side-item" id="si-us10y">
+          <div class="side-item-left">
+            <div class="side-item-name">미국 10년물 국채</div>
+            <div class="side-item-price" id="si-us10y-price">—</div>
+          </div>
+          <div class="side-item-right">
+            <div class="side-item-amt" id="si-us10y-amt">—</div>
+            <div class="side-item-pct" id="si-us10y-pct">—</div>
+          </div>
+        </div>
+        <div class="side-item" id="si-us30y">
+          <div class="side-item-left">
+            <div class="side-item-name">미국 30년물 국채</div>
+            <div class="side-item-price" id="si-us30y-price">—</div>
+          </div>
+          <div class="side-item-right">
+            <div class="side-item-amt" id="si-us30y-amt">—</div>
+            <div class="side-item-pct" id="si-us30y-pct">—</div>
+          </div>
+        </div>
+        <div class="side-item" id="si-usdidx">
+          <div class="side-item-left">
+            <div class="side-item-name">미국 달러 지수</div>
+            <div class="side-item-price" id="si-usdidx-price">—</div>
+          </div>
+          <div class="side-item-right">
+            <div class="side-item-amt" id="si-usdidx-amt">—</div>
+            <div class="side-item-pct" id="si-usdidx-pct">—</div>
+          </div>
+        </div>
+        <div class="side-item" id="si-gasoline">
+          <div class="side-item-left">
+            <div class="side-item-name">미국 가솔린</div>
+            <div class="side-item-price" id="si-gasoline-price">—</div>
+          </div>
+          <div class="side-item-right">
+            <div class="side-item-amt" id="si-gasoline-amt">—</div>
+            <div class="side-item-pct" id="si-gasoline-pct">—</div>
           </div>
         </div>
       </div>
@@ -934,8 +989,15 @@
     const cls    = isUp ? 'side-up' : isDown ? 'side-down' : 'side-flat';
     const sign   = isUp ? '+' : '';
     const arrow  = isUp ? '▲' : isDown ? '▼' : '─';
-    const dec    = key === 'usdkrw' || key === 'jpykrw' || key === 'thbkrw' ? 2 : 2;
-    const fmt    = v => v != null ? v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+
+    // 종류별 소수점 자리수
+    const decMap = { us10y: 3, us30y: 3, cboe_vix: 2, usdidx: 2, gasoline: 4 };
+    const dec = decMap[key] ?? 2;
+    const fmt = v => v != null
+      ? v.toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec})
+      : '—';
+    // 국채는 % 단위 suffix 표시
+    const suffix = (key === 'us10y' || key === 'us30y') ? '%' : '';
 
     const priceEl = document.getElementById(`${prefix}-${key}-price`);
     const amtEl   = document.getElementById(`${prefix}-${key}-amt`);
@@ -949,10 +1011,10 @@
       return;
     }
 
-    priceEl.textContent = fmt(data.price);
+    priceEl.textContent = fmt(data.price) + suffix;
     if (amtEl) {
       amtEl.textContent = data.change_amt != null
-        ? `${arrow} ${sign}${fmt(Math.abs(data.change_amt))}`
+        ? `${arrow} ${sign}${fmt(Math.abs(data.change_amt))}${suffix}`
         : '—';
       amtEl.className = 'side-item-amt ' + cls;
     }
@@ -1021,8 +1083,35 @@
       if (!res.ok) throw new Error();
       const data = await res.json();
       sideData.indices = data;
-      ['kospi','kosdaq','nq','vix'].forEach(k => renderSideItem('si', k, data[k]));
-      // 첫 로드 시 코스피 차트
+
+      // 일반 항목
+      ['kospi','kosdaq','nq','cboe_vix','us10y','us30y','usdidx','gasoline'].forEach(k => {
+        renderSideItem('si', k, data[k]);
+      });
+
+      // 공포탐욕 지수 특수 렌더링
+      const fg = data.feargreed;
+      if (fg && !fg.error) {
+        const score = fg.score ?? 0;
+        const priceEl = document.getElementById('si-feargreed-price');
+        const labelEl = document.getElementById('si-feargreed-label');
+        const fillEl  = document.getElementById('si-feargreed-fill');
+        if (priceEl) priceEl.textContent = score;
+        if (labelEl) labelEl.textContent = fg.label || '';
+        if (fillEl) {
+          const pct = Math.min(100, Math.max(0, score));
+          // 0~25: 극공포(파랑), 25~45: 공포, 45~55: 중립, 55~75: 탐욕, 75~100: 극탐욕(빨강)
+          const color = score < 25 ? '#4a9eff'
+                      : score < 45 ? '#7ab8ff'
+                      : score < 55 ? '#aaa'
+                      : score < 75 ? '#ffb347'
+                      : '#ff4757';
+          fillEl.style.width = pct + '%';
+          fillEl.style.background = color;
+          if (priceEl) priceEl.style.color = color;
+        }
+      }
+
       if (!sideChartData['kospi']) setSideChart('kospi');
       const now = new Date();
       document.getElementById('sideUpdatedAt').textContent =
@@ -1058,7 +1147,7 @@
     loadIndices();
     if (sideData.commodities) loadCommodities();
     if (sideData.forex) loadForex();
-  }, 60000);
+  }, 10000);
 
   function fillSearch(v) {
     document.getElementById('searchInput').value = v;

@@ -3949,28 +3949,63 @@ def get_yahoo_index(symbol: str, name: str) -> dict:
 
 # ── 지수 캐시 ──
 _indices_cache = {"data": None, "ts": 0}
-_INDICES_TTL = 30  # 30초 캐시
+_INDICES_TTL = 10  # 10초 캐시
+
+
+def get_fear_greed() -> dict:
+    """CNN 공포탐욕 지수 - Alternative.me API"""
+    try:
+        res = requests.get("https://api.alternative.me/fng/?limit=1", timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            val = data.get("data", [{}])[0]
+            score = int(val.get("value", 0))
+            label = val.get("value_classification", "")
+            label_kr = {
+                "Extreme Fear": "극도의 공포",
+                "Fear": "공포",
+                "Neutral": "중립",
+                "Greed": "탐욕",
+                "Extreme Greed": "극도의 탐욕",
+            }.get(label, label)
+            # 공포(0)~탐욕(100) 방향: 50 초과면 탐욕(상승), 미만이면 공포(하락)로 표시
+            change_pct = score - 50  # 중립(50) 대비 편차를 변동률처럼 활용
+            return {
+                "name": "공포탐욕 지수",
+                "price": float(score),
+                "change_amt": None,
+                "change_pct": None,
+                "label": label_kr,
+                "score": score,
+                "error": False,
+            }
+    except Exception as e:
+        pass
+    return {"name": "공포탐욕 지수", "error": True}
 
 
 @app.get("/indices")
 def get_indices():
-    """코스피 / 코스닥 / US Tech 100 선물 / S&P 500 VIX 선물 (병렬 + 캐싱)"""
+    """지수 항목 (병렬 + 캐싱)"""
     global _indices_cache
     now = time.time()
-
-    # 캐시 유효 시 즉시 반환
     if _indices_cache["data"] and now - _indices_cache["ts"] < _INDICES_TTL:
         return _indices_cache["data"]
 
     tasks = {
-        "kospi":  (get_kr_index,     ("0001", "코스피")),
-        "kosdaq": (get_kr_index,     ("1001", "코스닥")),
-        "nq":     (get_yahoo_index,  ("NQ=F", "US Tech 100 선물")),
-        "vix":    (get_yahoo_index,  ("^VIX", "S&P 500 VIX")),
+        "kospi":    (get_kr_index,    ("0001", "코스피")),
+        "kosdaq":   (get_kr_index,    ("1001", "코스닥")),
+        "nq":       (get_yahoo_index, ("NQ=F",  "US Tech 100 선물")),
+        "feargreed":(get_fear_greed,  ()),
+        "cboe_vix": (get_yahoo_index, ("^VIX",  "CBOE VIX 지수")),
+        "us10y":    (get_yahoo_index, ("^TNX",  "미국 10년물 국채")),
+        "us30y":    (get_yahoo_index, ("^TYX",  "미국 30년물 국채")),
+        "usdidx":   (get_yahoo_index, ("DX=F",  "미국 달러 지수")),
+        "gasoline": (get_yahoo_index, ("RB=F",  "미국 가솔린")),
     }
 
     results = {}
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=9) as executor:
         futures = {
             executor.submit(fn, *args): key
             for key, (fn, args) in tasks.items()
@@ -3980,7 +4015,7 @@ def get_indices():
             try:
                 results[key] = future.result()
             except Exception:
-                results[key] = {"name": tasks[key][1][1], "error": True}
+                results[key] = {"name": tasks[key][1][1] if tasks[key][1] else key, "error": True}
 
     _indices_cache["data"] = results
     _indices_cache["ts"] = now
