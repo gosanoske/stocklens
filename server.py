@@ -3894,6 +3894,19 @@ def get_kr_index(iscd: str, name: str) -> dict:
     # 이전 종가가 없으면 현재가 - 변동금액으로 계산
     if prev is None and price and change_amt:
         prev = price - change_amt
+    from datetime import datetime, timezone, timedelta
+    KST = timezone(timedelta(hours=9))
+    now_kst = datetime.now(KST)
+    weekday = now_kst.weekday()  # 0=월 ~ 6=일
+    hour, minute = now_kst.hour, now_kst.minute
+    total_min = hour * 60 + minute
+    # 코스피/코스닥 정규장: 월~금 09:00~15:30
+    is_trading = (
+        weekday < 5 and
+        9 * 60 <= total_min <= 15 * 60 + 30
+    )
+    market_open = "open" if is_trading else "closed"
+
     return {
         "name": name,
         "price": price,
@@ -3902,6 +3915,7 @@ def get_kr_index(iscd: str, name: str) -> dict:
         "prev_close": prev,
         "high":   safe_float(o.get("bstp_nmix_hgpr")),
         "low":    safe_float(o.get("bstp_nmix_lwpr")),
+        "market_open": market_open,
         "error": False,
     }
 
@@ -3922,29 +3936,80 @@ def debug_index(iscd: str = "0001"):
 
 
 def get_yahoo_index(symbol: str, name: str) -> dict:
-    """야후 파이낸스 API로 해외 지수/선물 조회"""
+    """야후 파이낸스 REST API 직접 호출 - 실시간 데이터 + 장 상태"""
     try:
-        import yfinance as yf
-        ticker = yf.Ticker(symbol)
-        info = ticker.fast_info
-        price      = getattr(info, "last_price", None)
-        prev       = getattr(info, "previous_close", None)
-        day_high   = getattr(info, "day_high", None)
-        day_low    = getattr(info, "day_low", None)
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+        }
+        params = {
+            "interval": "1m",
+            "range": "1d",
+            "includePrePost": "true",
+        }
+        res = requests.get(url, headers=headers, params=params, timeout=8)
+        if res.status_code != 200:
+            raise Exception(f"HTTP {res.status_code}")
+
+        data = res.json()
+        meta = data.get("chart", {}).get("result", [{}])[0].get("meta", {})
+
+        price      = meta.get("regularMarketPrice")
+        prev       = meta.get("previousClose") or meta.get("chartPreviousClose")
+        day_high   = meta.get("regularMarketDayHigh")
+        day_low    = meta.get("regularMarketDayLow")
+        market_state = meta.get("marketState", "")  # REGULAR, PRE, POST, CLOSED
+        exchange_tz  = meta.get("exchangeTimezoneName", "")
+
         change_amt = (price - prev) if price and prev else None
         change_pct = ((price - prev) / prev * 100) if price and prev else None
+
+        # 장 상태 판단
+        # REGULAR: 정규장 열림(초록), PRE/POST: 시간외(노랑), CLOSED: 마감(빨강)
+        if market_state == "REGULAR":
+            market_open = "open"
+        elif market_state in ("PRE", "POSTPOST", "POST"):
+            market_open = "pre_post"
+        else:
+            market_open = "closed"
+
         return {
             "name": name,
-            "price": round(price, 2) if price else None,
-            "change_amt": round(change_amt, 2) if change_amt else None,
-            "change_pct": round(change_pct, 4) if change_pct else None,
-            "prev_close": round(prev, 2) if prev else None,
-            "high": round(day_high, 2) if day_high else None,
-            "low":  round(day_low, 2) if day_low else None,
+            "price": round(price, 4) if price else None,
+            "change_amt": round(change_amt, 4) if change_amt is not None else None,
+            "change_pct": round(change_pct, 4) if change_pct is not None else None,
+            "prev_close": round(prev, 4) if prev else None,
+            "high": round(day_high, 4) if day_high else None,
+            "low":  round(day_low, 4) if day_low else None,
+            "market_state": market_state,
+            "market_open": market_open,
             "error": False,
         }
     except Exception as e:
-        return {"name": name, "error": True, "detail": str(e)}
+        # 폴백: yfinance
+        try:
+            import yfinance as yf
+            ticker = yf.Ticker(symbol)
+            info = ticker.fast_info
+            price = getattr(info, "last_price", None)
+            prev  = getattr(info, "previous_close", None)
+            change_amt = (price - prev) if price and prev else None
+            change_pct = ((price - prev) / prev * 100) if price and prev else None
+            return {
+                "name": name,
+                "price": round(price, 4) if price else None,
+                "change_amt": round(change_amt, 4) if change_amt is not None else None,
+                "change_pct": round(change_pct, 4) if change_pct is not None else None,
+                "prev_close": round(prev, 4) if prev else None,
+                "high": round(getattr(info, "day_high", None) or 0, 4) or None,
+                "low":  round(getattr(info, "day_low", None) or 0, 4) or None,
+                "market_state": "UNKNOWN",
+                "market_open": "closed",
+                "error": False,
+            }
+        except Exception:
+            return {"name": name, "error": True}
 
 
 # ── 지수 캐시 ──

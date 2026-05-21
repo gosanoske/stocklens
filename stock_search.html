@@ -486,6 +486,18 @@
     vertical-align: middle;
   }
   .side-item:hover .side-link-icon { opacity: 1; }
+  .market-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-left: 5px;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  .market-dot.open     { background: #00c896; box-shadow: 0 0 4px #00c896; }
+  .market-dot.pre_post { background: #f5a623; box-shadow: 0 0 4px #f5a623; }
+  .market-dot.closed   { background: var(--red); box-shadow: 0 0 4px var(--red); }
+  .market-dot.unknown  { background: var(--muted); }
   .side-item:last-child { border-bottom: none; }
   .side-item:hover { background: rgba(255,255,255,0.02); }
   .side-item-left { min-width: 0; }
@@ -958,13 +970,28 @@
     const fmt = v => v != null
       ? v.toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec})
       : '—';
-    // 국채는 % 단위 suffix 표시
     const suffix = (key === 'us10y' || key === 'us30y') ? '%' : '';
 
     const priceEl = document.getElementById(`${prefix}-${key}-price`);
     const amtEl   = document.getElementById(`${prefix}-${key}-amt`);
     const pctEl   = document.getElementById(`${prefix}-${key}-pct`);
     if (!priceEl) return;
+
+    // 장 상태 dot 업데이트
+    const itemEl = document.getElementById(`${prefix === 'si' ? 'si' : prefix}-${key}`) ||
+                   priceEl.closest('.side-item');
+    if (itemEl) {
+      let dot = itemEl.querySelector('.market-dot');
+      if (!dot) {
+        dot = document.createElement('span');
+        dot.className = 'market-dot';
+        const nameEl = itemEl.querySelector('.side-item-name');
+        if (nameEl) nameEl.appendChild(dot);
+      }
+      const state = data.market_open || 'unknown';
+      dot.className = `market-dot ${state}`;
+      dot.title = state === 'open' ? '장 운영중' : state === 'pre_post' ? '시간외' : '장 마감';
+    }
 
     if (data.error) {
       priceEl.textContent = '—';
