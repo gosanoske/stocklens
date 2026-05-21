@@ -55,8 +55,8 @@
   /* Search */
   .search-area {
     position: relative; z-index: 10;
-    max-width: 680px;
-    margin: 32px auto 12px;
+    max-width: 1280px;
+    margin: 20px auto 8px;
     padding: 0 24px;
   }
   .search-box {
@@ -87,7 +87,9 @@
 
   .examples {
     position: relative; z-index: 10;
-    text-align: center; margin-bottom: 28px;
+    max-width: 1280px;
+    margin: 0 auto 16px;
+    padding: 0 24px;
     font-size: 0.72rem; color: var(--muted); letter-spacing: 1px;
   }
   .examples span {
@@ -96,14 +98,6 @@
     transition: opacity 0.15s;
   }
   .examples span:hover { opacity: 1; }
-
-  /* Main layout */
-  .main {
-    position: relative; z-index: 10;
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 0 24px 60px;
-  }
 
   /* Loading / Error */
   .loading { text-align: center; padding: 50px 0; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; display: none; }
@@ -418,88 +412,118 @@
     .invest-group { border-right: none; }
   }
 
-  /* ── 지수 테이블 ── */
-  .indices-wrap {
+  /* ── 2컬럼 레이아웃 ── */
+  .page-layout {
     position: relative; z-index: 10;
-    max-width: 900px;
-    margin: 20px auto 0;
-    padding: 0 24px;
-  }
-  .indices-header-row {
     display: grid;
-    grid-template-columns: 2fr 1.2fr 1.2fr 1.2fr 1.2fr 1fr;
-    padding: 6px 14px;
-    border-bottom: 1px solid var(--border);
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+    align-items: start;
   }
-  .indices-header-row span {
-    font-size: 0.62rem;
-    color: var(--muted);
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 1px;
-    text-align: right;
+  .main-col { min-width: 0; }
+  .side-col {
+    position: sticky;
+    top: 16px;
   }
-  .indices-header-row span:first-child { text-align: left; }
 
-  .indices-table {
+  /* ── 사이드바 ── */
+  .sidebar {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 6px;
     overflow: hidden;
   }
-  .index-row {
+
+  /* 탭 */
+  .sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.72rem;
+    padding: 10px 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .sidebar-tab:hover { color: var(--text); }
+  .sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* 미니 차트 */
+  .side-minichart {
+    padding: 10px 12px 6px;
+    border-bottom: 1px solid var(--border);
+    height: 80px;
+    position: relative;
+  }
+  .side-minichart canvas { width: 100% !important; height: 100% !important; }
+
+  /* 사이드바 리스트 */
+  .side-list { overflow: hidden; }
+  .side-item {
     display: grid;
-    grid-template-columns: 2fr 1.2fr 1.2fr 1.2fr 1.2fr 1fr;
-    align-items: center;
-    padding: 10px 14px;
+    grid-template-columns: 1fr auto;
+    gap: 4px;
+    padding: 8px 14px;
     border-bottom: 1px solid rgba(255,255,255,0.04);
     transition: background 0.12s;
+    cursor: default;
   }
-  .index-row:last-child { border-bottom: none; }
-  .index-row:hover { background: rgba(255,255,255,0.02); }
-
-  .idx-name-col {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .idx-flag {
-    width: 18px; height: 18px;
-    border-radius: 50%;
-    font-size: 0.75rem;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .idx-flag.kr { background: rgba(124,58,237,0.2); color: #a78bfa; }
-  .idx-flag.us { background: rgba(0,229,255,0.1);  color: var(--accent); }
-  .idx-name-text {
-    font-size: 0.82rem;
-    font-weight: 500;
+  .side-item:last-child { border-bottom: none; }
+  .side-item:hover { background: rgba(255,255,255,0.02); }
+  .side-item-left { min-width: 0; }
+  .side-item-name {
+    font-size: 0.78rem;
     color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
   }
-
-  .idx-col {
-    text-align: right;
+  .side-item-price {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.82rem;
+    font-weight: 600;
     color: var(--text);
   }
-  .idx-col.up   { color: var(--red); }
-  .idx-col.down { color: #4a9eff; }
-  .idx-col.muted { color: var(--muted); font-size: 0.72rem; }
-
-  .idx-time-col {
-    text-align: right;
+  .side-item-right { text-align: right; }
+  .side-item-amt {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.68rem;
+    font-size: 0.72rem;
+    margin-bottom: 2px;
+  }
+  .side-item-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .side-up   { color: var(--red); }
+  .side-down { color: #4a9eff; }
+  .side-flat { color: var(--muted); }
+
+  /* 업데이트 시각 */
+  .side-footer {
+    padding: 6px 14px;
+    font-size: 0.62rem;
     color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border);
+    text-align: right;
   }
-  .idx-loading { color: var(--muted); font-size: 0.72rem; }
 
-  @media (max-width: 640px) {
-    .indices-wrap { padding: 0 16px; }
-    .indices-header-row,
-    .index-row { grid-template-columns: 2fr 1fr 1fr 1fr; }
-    .idx-high-col, .idx-low-col { display: none; }
+  @media (max-width: 900px) {
+    .page-layout { grid-template-columns: 1fr; }
+    .side-col { position: static; }
+    .sidebar { margin-bottom: 20px; }
   }
 </style>
 </head>
@@ -509,73 +533,6 @@
   <div class="logo">StockLens</div>
   <div class="logo-sub">주식 종목 검색</div>
 </header>
-
-<!-- 지수 테이블 -->
-<div class="indices-wrap">
-  <div class="indices-header-row">
-    <span>종목명</span>
-    <span>종가</span>
-    <span class="idx-high-col">고가</span>
-    <span class="idx-low-col">저가</span>
-    <span>변동</span>
-    <span>변동%</span>
-  </div>
-  <div class="indices-table">
-
-    <!-- 코스피 -->
-    <div class="index-row">
-      <div class="idx-name-col">
-        <div class="idx-flag kr">K</div>
-        <span class="idx-name-text">코스피</span>
-      </div>
-      <div class="idx-col" id="idx-kospi-price">—</div>
-      <div class="idx-col idx-high-col" id="idx-kospi-high">—</div>
-      <div class="idx-col idx-low-col" id="idx-kospi-low">—</div>
-      <div class="idx-col" id="idx-kospi-amt">—</div>
-      <div class="idx-col" id="idx-kospi-pct">—</div>
-    </div>
-
-    <!-- 코스닥 -->
-    <div class="index-row">
-      <div class="idx-name-col">
-        <div class="idx-flag kr">K</div>
-        <span class="idx-name-text">코스닥</span>
-      </div>
-      <div class="idx-col" id="idx-kosdaq-price">—</div>
-      <div class="idx-col idx-high-col" id="idx-kosdaq-high">—</div>
-      <div class="idx-col idx-low-col" id="idx-kosdaq-low">—</div>
-      <div class="idx-col" id="idx-kosdaq-amt">—</div>
-      <div class="idx-col" id="idx-kosdaq-pct">—</div>
-    </div>
-
-    <!-- US Tech 100 선물 -->
-    <div class="index-row">
-      <div class="idx-name-col">
-        <div class="idx-flag us">N</div>
-        <span class="idx-name-text" id="idx-nq-name">US Tech 100 선물</span>
-      </div>
-      <div class="idx-col" id="idx-nq-price">—</div>
-      <div class="idx-col idx-high-col" id="idx-nq-high">—</div>
-      <div class="idx-col idx-low-col" id="idx-nq-low">—</div>
-      <div class="idx-col" id="idx-nq-amt">—</div>
-      <div class="idx-col" id="idx-nq-pct">—</div>
-    </div>
-
-    <!-- S&P 500 VIX 선물 -->
-    <div class="index-row">
-      <div class="idx-name-col">
-        <div class="idx-flag us">V</div>
-        <span class="idx-name-text" id="idx-vix-name">S&P 500 VIX 선물</span>
-      </div>
-      <div class="idx-col" id="idx-vix-price">—</div>
-      <div class="idx-col idx-high-col" id="idx-vix-high">—</div>
-      <div class="idx-col idx-low-col" id="idx-vix-low">—</div>
-      <div class="idx-col" id="idx-vix-amt">—</div>
-      <div class="idx-col" id="idx-vix-pct">—</div>
-    </div>
-
-  </div>
-</div>
 
 <div class="search-area">
   <div class="search-box">
@@ -596,14 +553,17 @@
   <span onclick="fillSearch('NVDA')">NVDA</span>
 </div>
 
-<div class="main">
-  <div class="loading" id="loading">
-    <div class="dots"><span></span><span></span><span></span></div>
-    <div style="margin-top:10px">데이터를 불러오는 중...</div>
-  </div>
-  <div class="error-msg" id="errorMsg"></div>
+<div class="page-layout">
 
-  <div class="result-card" id="resultCard">
+  <!-- ── 왼쪽: 검색 결과 ── -->
+  <div class="main-col">
+    <div class="loading" id="loading">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div style="margin-top:10px">데이터를 불러오는 중...</div>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="result-card" id="resultCard">
 
     <!-- 종목명 + 현재가 -->
     <div class="top-section">
@@ -852,90 +812,253 @@
     </div>
 
   </div><!-- /result-card -->
-</div>
+  </div><!-- /main-col -->
+
+  <!-- ── 오른쪽: 사이드바 ── -->
+  <div class="side-col">
+    <div class="sidebar">
+
+      <!-- 탭 -->
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" onclick="switchSideTab('indices')">지수</button>
+        <button class="sidebar-tab" onclick="switchSideTab('commodities')">원자재</button>
+        <button class="sidebar-tab" onclick="switchSideTab('forex')">외환</button>
+      </div>
+
+      <!-- 미니 차트 -->
+      <div class="side-minichart">
+        <canvas id="sideChart"></canvas>
+      </div>
+
+      <!-- 지수 리스트 -->
+      <div class="side-list" id="side-indices">
+        <div class="side-item" id="si-kospi" onclick="setSideChart('kospi')">
+          <div class="side-item-left">
+            <div class="side-item-name">코스피</div>
+            <div class="side-item-price" id="si-kospi-price">—</div>
+          </div>
+          <div class="side-item-right">
+            <div class="side-item-amt" id="si-kospi-amt">—</div>
+            <div class="side-item-pct" id="si-kospi-pct">—</div>
+          </div>
+        </div>
+        <div class="side-item" id="si-kosdaq" onclick="setSideChart('kosdaq')">
+          <div class="side-item-left">
+            <div class="side-item-name">코스닥</div>
+            <div class="side-item-price" id="si-kosdaq-price">—</div>
+          </div>
+          <div class="side-item-right">
+            <div class="side-item-amt" id="si-kosdaq-amt">—</div>
+            <div class="side-item-pct" id="si-kosdaq-pct">—</div>
+          </div>
+        </div>
+        <div class="side-item" id="si-nq" onclick="setSideChart('nq')">
+          <div class="side-item-left">
+            <div class="side-item-name">US Tech 100</div>
+            <div class="side-item-price" id="si-nq-price">—</div>
+          </div>
+          <div class="side-item-right">
+            <div class="side-item-amt" id="si-nq-amt">—</div>
+            <div class="side-item-pct" id="si-nq-pct">—</div>
+          </div>
+        </div>
+        <div class="side-item" id="si-vix" onclick="setSideChart('vix')">
+          <div class="side-item-left">
+            <div class="side-item-name">S&P 500 VIX</div>
+            <div class="side-item-price" id="si-vix-price">—</div>
+          </div>
+          <div class="side-item-right">
+            <div class="side-item-amt" id="si-vix-amt">—</div>
+            <div class="side-item-pct" id="si-vix-pct">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 원자재 리스트 -->
+      <div class="side-list" id="side-commodities" style="display:none">
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">금</div><div class="side-item-price" id="sc-gold-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-gold-amt">—</div><div class="side-item-pct" id="sc-gold-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">은</div><div class="side-item-price" id="sc-silver-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-silver-amt">—</div><div class="side-item-pct" id="sc-silver-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">브렌트유</div><div class="side-item-price" id="sc-brent-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-brent-amt">—</div><div class="side-item-pct" id="sc-brent-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">WTI유</div><div class="side-item-price" id="sc-wti-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-wti-amt">—</div><div class="side-item-pct" id="sc-wti-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">천연가스</div><div class="side-item-price" id="sc-natgas-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-natgas-amt">—</div><div class="side-item-pct" id="sc-natgas-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">구리</div><div class="side-item-price" id="sc-copper-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-copper-amt">—</div><div class="side-item-pct" id="sc-copper-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">옥수수</div><div class="side-item-price" id="sc-corn-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-corn-amt">—</div><div class="side-item-pct" id="sc-corn-pct">—</div></div></div>
+      </div>
+
+      <!-- 외환 리스트 -->
+      <div class="side-list" id="side-forex" style="display:none">
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">달러/원</div><div class="side-item-price" id="sf-usdkrw-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-usdkrw-amt">—</div><div class="side-item-pct" id="sf-usdkrw-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">유로/달러</div><div class="side-item-price" id="sf-eurusd-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-eurusd-amt">—</div><div class="side-item-pct" id="sf-eurusd-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">엔/원</div><div class="side-item-price" id="sf-jpykrw-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-jpykrw-amt">—</div><div class="side-item-pct" id="sf-jpykrw-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">파운드/달러</div><div class="side-item-price" id="sf-gbpusd-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-gbpusd-amt">—</div><div class="side-item-pct" id="sf-gbpusd-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">달러/엔</div><div class="side-item-price" id="sf-usdjpy-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-usdjpy-amt">—</div><div class="side-item-pct" id="sf-usdjpy-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">태국 바트/원</div><div class="side-item-price" id="sf-thbkrw-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-thbkrw-amt">—</div><div class="side-item-pct" id="sf-thbkrw-pct">—</div></div></div>
+        <div class="side-item"><div class="side-item-left"><div class="side-item-name">달러 인덱스</div><div class="side-item-price" id="sf-usdindex-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-usdindex-amt">—</div><div class="side-item-pct" id="sf-usdindex-pct">—</div></div></div>
+      </div>
+
+      <div class="side-footer" id="sideUpdatedAt">갱신 중...</div>
+    </div>
+  </div><!-- /side-col -->
+
+</div><!-- /page-layout -->
 
 <script>
   const API_BASE = 'https://stocklens-rxli.onrender.com';
 
-  // ── 지수 테이블 ──
-  const miniCharts = {};
+  // ── 사이드바 ──
+  let sideChartInst = null;
+  let currentSideTab = 'indices';
+  let currentSideChartKey = 'kospi';
+  let sideData = { indices: null, commodities: null, forex: null };
+  // 코스피/코스닥 분봉 차트 데이터 캐시
+  let sideChartData = {};
 
-  function setIndexRow(key, data) {
-    const fmtNum = (v, dec=2) => v != null
-      ? v.toLocaleString('ko-KR', {minimumFractionDigits: dec, maximumFractionDigits: dec})
-      : '—';
+  // 탭 전환
+  function switchSideTab(tab) {
+    currentSideTab = tab;
+    document.querySelectorAll('.sidebar-tab').forEach((b, i) => {
+      b.classList.toggle('active', ['indices','commodities','forex'][i] === tab);
+    });
+    ['indices','commodities','forex'].forEach(t => {
+      document.getElementById('side-' + t).style.display = t === tab ? 'block' : 'none';
+    });
+    if (tab === 'commodities' && !sideData.commodities) loadCommodities();
+    if (tab === 'forex' && !sideData.forex) loadForex();
+  }
 
-    if (!data || data.error) {
-      ['price','high','low','amt','pct'].forEach(f => {
-        const el = document.getElementById(`idx-${key}-${f}`);
-        if (el) { el.textContent = '—'; el.className = 'idx-col muted'; }
-      });
+  // 사이드 아이템 렌더
+  function renderSideItem(prefix, key, data) {
+    if (!data) return;
+    const isUp   = (data.change_pct ?? 0) > 0;
+    const isDown = (data.change_pct ?? 0) < 0;
+    const cls    = isUp ? 'side-up' : isDown ? 'side-down' : 'side-flat';
+    const sign   = isUp ? '+' : '';
+    const arrow  = isUp ? '▲' : isDown ? '▼' : '─';
+    const dec    = key === 'usdkrw' || key === 'jpykrw' || key === 'thbkrw' ? 2 : 2;
+    const fmt    = v => v != null ? v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+
+    const priceEl = document.getElementById(`${prefix}-${key}-price`);
+    const amtEl   = document.getElementById(`${prefix}-${key}-amt`);
+    const pctEl   = document.getElementById(`${prefix}-${key}-pct`);
+    if (!priceEl) return;
+
+    if (data.error) {
+      priceEl.textContent = '—';
+      if (amtEl) amtEl.textContent = '—';
+      if (pctEl) { pctEl.textContent = '—'; pctEl.className = 'side-item-pct side-flat'; }
       return;
     }
 
-    const isUp   = (data.change_pct ?? 0) > 0;
-    const isDown = (data.change_pct ?? 0) < 0;
-    const cls    = isUp ? 'idx-col up' : isDown ? 'idx-col down' : 'idx-col';
-    const sign   = isUp ? '+' : '';
-    const arrow  = isUp ? '▲' : isDown ? '▼' : '─';
-
-    // 종가
-    const priceEl = document.getElementById(`idx-${key}-price`);
-    if (priceEl) { priceEl.textContent = fmtNum(data.price); priceEl.className = cls; }
-
-    // 고가
-    const highEl = document.getElementById(`idx-${key}-high`);
-    if (highEl) { highEl.textContent = fmtNum(data.high); highEl.className = 'idx-col up'; }
-
-    // 저가
-    const lowEl = document.getElementById(`idx-${key}-low`);
-    if (lowEl) { lowEl.textContent = fmtNum(data.low); lowEl.className = 'idx-col down'; }
-
-    // 변동 금액
-    const amtEl = document.getElementById(`idx-${key}-amt`);
+    priceEl.textContent = fmt(data.price);
     if (amtEl) {
-      const amt = data.change_amt != null
-        ? `${arrow} ${sign}${fmtNum(Math.abs(data.change_amt))}`
+      amtEl.textContent = data.change_amt != null
+        ? `${arrow} ${sign}${fmt(Math.abs(data.change_amt))}`
         : '—';
-      amtEl.textContent = amt;
-      amtEl.className = cls;
+      amtEl.className = 'side-item-amt ' + cls;
     }
-
-    // 변동 %
-    const pctEl = document.getElementById(`idx-${key}-pct`);
     if (pctEl) {
-      pctEl.textContent = data.change_pct != null
-        ? `${sign}${data.change_pct.toFixed(2)}%`
-        : '—';
-      pctEl.className = cls;
+      pctEl.textContent = data.change_pct != null ? `${sign}${data.change_pct.toFixed(2)}%` : '—';
+      pctEl.className = 'side-item-pct ' + cls;
     }
-
-    // 이름 업데이트 (폴백 종목일 때)
-    const nameEl = document.getElementById(`idx-${key}-name`);
-    if (nameEl && data.name) nameEl.textContent = data.name;
   }
 
+  // 미니 차트 (분봉 데이터)
+  async function setSideChart(key) {
+    currentSideChartKey = key;
+    // 선택된 아이템 하이라이트
+    document.querySelectorAll('#side-indices .side-item').forEach(el => {
+      el.style.background = el.id === 'si-' + key ? 'rgba(0,229,255,0.05)' : '';
+    });
+
+    // 캐시 있으면 바로 그림
+    if (sideChartData[key]) { drawSideChart(sideChartData[key], key); return; }
+
+    // KIS 분봉 데이터 가져오기
+    try {
+      const period = '1D';
+      const serverPeriod = '1M';
+      const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(
+        key === 'kospi' ? '0001' : key === 'kosdaq' ? '1001' : key
+      )}&period=${serverPeriod}`);
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      sideChartData[key] = json.data;
+      drawSideChart(json.data, key);
+    } catch(e) {
+      if (sideChartInst) { sideChartInst.destroy(); sideChartInst = null; }
+    }
+  }
+
+  function drawSideChart(data, key) {
+    if (!data || data.length < 2) return;
+    const closes = data.map(d => d.close).filter(v => v != null);
+    if (closes.length < 2) return;
+    const first = closes[0], last = closes[closes.length - 1];
+    const isUp = last >= first;
+    const color = isUp ? '#ff4757' : '#4a9eff';
+    const fill  = isUp ? 'rgba(255,71,87,0.12)' : 'rgba(74,158,255,0.12)';
+    if (sideChartInst) { sideChartInst.destroy(); sideChartInst = null; }
+    const ctx = document.getElementById('sideChart').getContext('2d');
+    sideChartInst = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: closes.map((_, i) => i),
+        datasets: [{ data: closes, borderColor: color, backgroundColor: fill,
+          borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.3 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } }
+      }
+    });
+  }
+
+  // 지수 로드
   async function loadIndices() {
     try {
       const res = await fetch(`${API_BASE}/indices`);
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setIndexRow('kospi',  data.kospi);
-      setIndexRow('kosdaq', data.kosdaq);
-      setIndexRow('nq',     data.nq);
-      setIndexRow('vix',    data.vix);
-    } catch(e) {
-      ['kospi','kosdaq','nq','vix'].forEach(k => {
-        ['price','high','low','amt','pct'].forEach(f => {
-          const el = document.getElementById(`idx-${k}-${f}`);
-          if (el) { el.textContent = '—'; el.className = 'idx-col muted'; }
-        });
-      });
-    }
+      sideData.indices = data;
+      ['kospi','kosdaq','nq','vix'].forEach(k => renderSideItem('si', k, data[k]));
+      // 첫 로드 시 코스피 차트
+      if (!sideChartData['kospi']) setSideChart('kospi');
+      const now = new Date();
+      document.getElementById('sideUpdatedAt').textContent =
+        `갱신 ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+    } catch(e) {}
   }
 
+  // 원자재 로드
+  async function loadCommodities() {
+    try {
+      const res = await fetch(`${API_BASE}/commodities`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      sideData.commodities = data;
+      Object.keys(data).forEach(k => renderSideItem('sc', k, data[k]));
+    } catch(e) {}
+  }
+
+  // 외환 로드
+  async function loadForex() {
+    try {
+      const res = await fetch(`${API_BASE}/forex`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      sideData.forex = data;
+      Object.keys(data).forEach(k => renderSideItem('sf', k, data[k]));
+    } catch(e) {}
+  }
+
+  // 초기 로드 + 1분 자동 갱신
   loadIndices();
-  setInterval(loadIndices, 60000);
+  setInterval(() => {
+    loadIndices();
+    if (sideData.commodities) loadCommodities();
+    if (sideData.forex) loadForex();
+  }, 60000);
 
   function fillSearch(v) {
     document.getElementById('searchInput').value = v;

@@ -3987,8 +3987,86 @@ def get_indices():
     return results
 
 
+# ── 원자재 / 외환 캐시 ──
+_commodities_cache = {"data": None, "ts": 0}
+_forex_cache       = {"data": None, "ts": 0}
+_SIDE_TTL = 60  # 60초 캐시
 
-def get_kr_index_chart(iscd: str) -> list:
+
+@app.get("/commodities")
+def get_commodities():
+    """원자재 시세 (금/은/브렌트유/WTI/천연가스/구리/옥수수)"""
+    global _commodities_cache
+    now = time.time()
+    if _commodities_cache["data"] and now - _commodities_cache["ts"] < _SIDE_TTL:
+        return _commodities_cache["data"]
+
+    symbols = {
+        "gold":   ("GC=F", "금"),
+        "silver": ("SI=F", "은"),
+        "brent":  ("BZ=F", "브렌트유"),
+        "wti":    ("CL=F", "WTI유"),
+        "natgas": ("NG=F", "천연가스"),
+        "copper": ("HG=F", "구리"),
+        "corn":   ("ZC=F", "옥수수"),
+    }
+
+    def fetch(key, sym, name):
+        return key, get_yahoo_index(sym, name)
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=7) as ex:
+        futures = {ex.submit(fetch, k, s, n): k for k, (s, n) in symbols.items()}
+        for f in as_completed(futures):
+            try:
+                k, v = f.result()
+                results[k] = v
+            except Exception:
+                key = futures[f]
+                results[key] = {"name": symbols[key][1], "error": True}
+
+    _commodities_cache["data"] = results
+    _commodities_cache["ts"] = now
+    return results
+
+
+@app.get("/forex")
+def get_forex():
+    """주요 환율"""
+    global _forex_cache
+    now = time.time()
+    if _forex_cache["data"] and now - _forex_cache["ts"] < _SIDE_TTL:
+        return _forex_cache["data"]
+
+    symbols = {
+        "usdkrw":   ("USDKRW=X", "달러/원"),
+        "eurusd":   ("EURUSD=X", "유로/달러"),
+        "jpykrw":   ("JPYKRW=X", "엔/원"),
+        "gbpusd":   ("GBPUSD=X", "파운드/달러"),
+        "usdjpy":   ("USDJPY=X", "달러/엔"),
+        "thbkrw":   ("THBKRW=X", "태국 바트/원"),
+        "usdindex": ("DX=F",     "달러 인덱스"),
+    }
+
+    def fetch(key, sym, name):
+        return key, get_yahoo_index(sym, name)
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=7) as ex:
+        futures = {ex.submit(fetch, k, s, n): k for k, (s, n) in symbols.items()}
+        for f in as_completed(futures):
+            try:
+                k, v = f.result()
+                results[k] = v
+            except Exception:
+                key = futures[f]
+                results[key] = {"name": symbols[key][1], "error": True}
+
+    _forex_cache["data"] = results
+    _forex_cache["ts"] = now
+    return results
+
+
     """코스피/코스닥 당일 분봉 미니 차트"""
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
