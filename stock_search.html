@@ -476,8 +476,16 @@
     padding: 8px 14px;
     border-bottom: 1px solid rgba(255,255,255,0.04);
     transition: background 0.12s;
-    cursor: default;
+    cursor: pointer;
   }
+  .side-link-icon {
+    font-size: 0.6rem;
+    color: var(--muted);
+    opacity: 0;
+    transition: opacity 0.15s;
+    vertical-align: middle;
+  }
+  .side-item:hover .side-link-icon { opacity: 1; }
   .side-item:last-child { border-bottom: none; }
   .side-item:hover { background: rgba(255,255,255,0.02); }
   .side-item-left { min-width: 0; }
@@ -832,40 +840,21 @@
 
       <!-- 지수 리스트 -->
       <div class="side-list" id="side-indices">
-        <div class="side-item" id="si-kospi" onclick="setSideChart('kospi')">
-          <div class="side-item-left">
-            <div class="side-item-name">코스피</div>
-            <div class="side-item-price" id="si-kospi-price">—</div>
-          </div>
-          <div class="side-item-right">
-            <div class="side-item-amt" id="si-kospi-amt">—</div>
-            <div class="side-item-pct" id="si-kospi-pct">—</div>
-          </div>
+        <div class="side-item" id="si-kospi" onclick="setSideChart('kospi');openLink('https://kr.investing.com/indices/kospi')">
+          <div class="side-item-left"><div class="side-item-name">코스피 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="si-kospi-price">—</div></div>
+          <div class="side-item-right"><div class="side-item-amt" id="si-kospi-amt">—</div><div class="side-item-pct" id="si-kospi-pct">—</div></div>
         </div>
-        <div class="side-item" id="si-kosdaq" onclick="setSideChart('kosdaq')">
-          <div class="side-item-left">
-            <div class="side-item-name">코스닥</div>
-            <div class="side-item-price" id="si-kosdaq-price">—</div>
-          </div>
-          <div class="side-item-right">
-            <div class="side-item-amt" id="si-kosdaq-amt">—</div>
-            <div class="side-item-pct" id="si-kosdaq-pct">—</div>
-          </div>
+        <div class="side-item" id="si-kosdaq" onclick="setSideChart('kosdaq');openLink('https://kr.investing.com/indices/kosdaq')">
+          <div class="side-item-left"><div class="side-item-name">코스닥 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="si-kosdaq-price">—</div></div>
+          <div class="side-item-right"><div class="side-item-amt" id="si-kosdaq-amt">—</div><div class="side-item-pct" id="si-kosdaq-pct">—</div></div>
         </div>
-        <div class="side-item" id="si-nq">
-          <div class="side-item-left">
-            <div class="side-item-name">US Tech 100</div>
-            <div class="side-item-price" id="si-nq-price">—</div>
-          </div>
-          <div class="side-item-right">
-            <div class="side-item-amt" id="si-nq-amt">—</div>
-            <div class="side-item-pct" id="si-nq-pct">—</div>
-          </div>
+        <div class="side-item" id="si-nq" onclick="openLink('https://kr.investing.com/indices/nq-100-futures')">
+          <div class="side-item-left"><div class="side-item-name">US Tech 100 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="si-nq-price">—</div></div>
+          <div class="side-item-right"><div class="side-item-amt" id="si-nq-amt">—</div><div class="side-item-pct" id="si-nq-pct">—</div></div>
         </div>
-        <!-- 공포탐욕 지수 (특수 레이아웃) -->
-        <div class="side-item" id="si-feargreed">
+        <div class="side-item" id="si-feargreed" onclick="openLink('https://edition.cnn.com/markets/fear-and-greed')">
           <div class="side-item-left">
-            <div class="side-item-name">공포탐욕 지수</div>
+            <div class="side-item-name">공포탐욕 지수 <span class="side-link-icon">↗</span></div>
             <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
               <div class="side-item-price" id="si-feargreed-price">—</div>
               <div id="si-feargreed-label" style="font-size:0.68rem;color:var(--muted);font-family:'Noto Sans KR'"></div>
@@ -877,78 +866,48 @@
             </div>
           </div>
         </div>
-        <div class="side-item" id="si-cboe_vix">
-          <div class="side-item-left">
-            <div class="side-item-name">CBOE VIX 지수</div>
-            <div class="side-item-price" id="si-cboe_vix-price">—</div>
-          </div>
-          <div class="side-item-right">
-            <div class="side-item-amt" id="si-cboe_vix-amt">—</div>
-            <div class="side-item-pct" id="si-cboe_vix-pct">—</div>
-          </div>
+        <div class="side-item" id="si-cboe_vix" onclick="openLink('https://kr.investing.com/indices/volatility-s-p-500')">
+          <div class="side-item-left"><div class="side-item-name">CBOE VIX 지수 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="si-cboe_vix-price">—</div></div>
+          <div class="side-item-right"><div class="side-item-amt" id="si-cboe_vix-amt">—</div><div class="side-item-pct" id="si-cboe_vix-pct">—</div></div>
         </div>
-        <div class="side-item" id="si-us10y">
-          <div class="side-item-left">
-            <div class="side-item-name">미국 10년물 국채</div>
-            <div class="side-item-price" id="si-us10y-price">—</div>
-          </div>
-          <div class="side-item-right">
-            <div class="side-item-amt" id="si-us10y-amt">—</div>
-            <div class="side-item-pct" id="si-us10y-pct">—</div>
-          </div>
+        <div class="side-item" id="si-us10y" onclick="openLink('https://kr.investing.com/rates-bonds/u.s.-10-year-bond-yield')">
+          <div class="side-item-left"><div class="side-item-name">미국 10년물 국채 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="si-us10y-price">—</div></div>
+          <div class="side-item-right"><div class="side-item-amt" id="si-us10y-amt">—</div><div class="side-item-pct" id="si-us10y-pct">—</div></div>
         </div>
-        <div class="side-item" id="si-us30y">
-          <div class="side-item-left">
-            <div class="side-item-name">미국 30년물 국채</div>
-            <div class="side-item-price" id="si-us30y-price">—</div>
-          </div>
-          <div class="side-item-right">
-            <div class="side-item-amt" id="si-us30y-amt">—</div>
-            <div class="side-item-pct" id="si-us30y-pct">—</div>
-          </div>
+        <div class="side-item" id="si-us30y" onclick="openLink('https://kr.investing.com/rates-bonds/u.s.-30-year-bond-yield')">
+          <div class="side-item-left"><div class="side-item-name">미국 30년물 국채 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="si-us30y-price">—</div></div>
+          <div class="side-item-right"><div class="side-item-amt" id="si-us30y-amt">—</div><div class="side-item-pct" id="si-us30y-pct">—</div></div>
         </div>
-        <div class="side-item" id="si-usdidx">
-          <div class="side-item-left">
-            <div class="side-item-name">미국 달러 지수</div>
-            <div class="side-item-price" id="si-usdidx-price">—</div>
-          </div>
-          <div class="side-item-right">
-            <div class="side-item-amt" id="si-usdidx-amt">—</div>
-            <div class="side-item-pct" id="si-usdidx-pct">—</div>
-          </div>
+        <div class="side-item" id="si-usdidx" onclick="openLink('https://kr.investing.com/indices/usdollar')">
+          <div class="side-item-left"><div class="side-item-name">미국 달러 지수 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="si-usdidx-price">—</div></div>
+          <div class="side-item-right"><div class="side-item-amt" id="si-usdidx-amt">—</div><div class="side-item-pct" id="si-usdidx-pct">—</div></div>
         </div>
-        <div class="side-item" id="si-gasoline">
-          <div class="side-item-left">
-            <div class="side-item-name">미국 가솔린</div>
-            <div class="side-item-price" id="si-gasoline-price">—</div>
-          </div>
-          <div class="side-item-right">
-            <div class="side-item-amt" id="si-gasoline-amt">—</div>
-            <div class="side-item-pct" id="si-gasoline-pct">—</div>
-          </div>
+        <div class="side-item" id="si-gasoline" onclick="openLink('https://kr.investing.com/commodities/gasoline-rbob')">
+          <div class="side-item-left"><div class="side-item-name">미국 가솔린 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="si-gasoline-price">—</div></div>
+          <div class="side-item-right"><div class="side-item-amt" id="si-gasoline-amt">—</div><div class="side-item-pct" id="si-gasoline-pct">—</div></div>
         </div>
       </div>
 
       <!-- 원자재 리스트 -->
       <div class="side-list" id="side-commodities" style="display:none">
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">금</div><div class="side-item-price" id="sc-gold-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-gold-amt">—</div><div class="side-item-pct" id="sc-gold-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">은</div><div class="side-item-price" id="sc-silver-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-silver-amt">—</div><div class="side-item-pct" id="sc-silver-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">브렌트유</div><div class="side-item-price" id="sc-brent-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-brent-amt">—</div><div class="side-item-pct" id="sc-brent-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">WTI유</div><div class="side-item-price" id="sc-wti-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-wti-amt">—</div><div class="side-item-pct" id="sc-wti-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">천연가스</div><div class="side-item-price" id="sc-natgas-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-natgas-amt">—</div><div class="side-item-pct" id="sc-natgas-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">구리</div><div class="side-item-price" id="sc-copper-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-copper-amt">—</div><div class="side-item-pct" id="sc-copper-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">옥수수</div><div class="side-item-price" id="sc-corn-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-corn-amt">—</div><div class="side-item-pct" id="sc-corn-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/commodities/gold')"><div class="side-item-left"><div class="side-item-name">금 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sc-gold-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-gold-amt">—</div><div class="side-item-pct" id="sc-gold-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/commodities/silver')"><div class="side-item-left"><div class="side-item-name">은 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sc-silver-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-silver-amt">—</div><div class="side-item-pct" id="sc-silver-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/commodities/brent-oil')"><div class="side-item-left"><div class="side-item-name">브렌트유 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sc-brent-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-brent-amt">—</div><div class="side-item-pct" id="sc-brent-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/commodities/crude-oil')"><div class="side-item-left"><div class="side-item-name">WTI유 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sc-wti-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-wti-amt">—</div><div class="side-item-pct" id="sc-wti-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/commodities/natural-gas')"><div class="side-item-left"><div class="side-item-name">천연가스 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sc-natgas-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-natgas-amt">—</div><div class="side-item-pct" id="sc-natgas-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/commodities/copper')"><div class="side-item-left"><div class="side-item-name">구리 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sc-copper-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-copper-amt">—</div><div class="side-item-pct" id="sc-copper-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/commodities/us-corn')"><div class="side-item-left"><div class="side-item-name">옥수수 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sc-corn-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sc-corn-amt">—</div><div class="side-item-pct" id="sc-corn-pct">—</div></div></div>
       </div>
 
       <!-- 외환 리스트 -->
       <div class="side-list" id="side-forex" style="display:none">
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">달러/원</div><div class="side-item-price" id="sf-usdkrw-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-usdkrw-amt">—</div><div class="side-item-pct" id="sf-usdkrw-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">유로/달러</div><div class="side-item-price" id="sf-eurusd-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-eurusd-amt">—</div><div class="side-item-pct" id="sf-eurusd-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">엔/원</div><div class="side-item-price" id="sf-jpykrw-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-jpykrw-amt">—</div><div class="side-item-pct" id="sf-jpykrw-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">파운드/달러</div><div class="side-item-price" id="sf-gbpusd-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-gbpusd-amt">—</div><div class="side-item-pct" id="sf-gbpusd-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">달러/엔</div><div class="side-item-price" id="sf-usdjpy-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-usdjpy-amt">—</div><div class="side-item-pct" id="sf-usdjpy-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">태국 바트/원</div><div class="side-item-price" id="sf-thbkrw-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-thbkrw-amt">—</div><div class="side-item-pct" id="sf-thbkrw-pct">—</div></div></div>
-        <div class="side-item"><div class="side-item-left"><div class="side-item-name">달러 인덱스</div><div class="side-item-price" id="sf-usdindex-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-usdindex-amt">—</div><div class="side-item-pct" id="sf-usdindex-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/currencies/usd-krw')"><div class="side-item-left"><div class="side-item-name">달러/원 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sf-usdkrw-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-usdkrw-amt">—</div><div class="side-item-pct" id="sf-usdkrw-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/currencies/eur-usd')"><div class="side-item-left"><div class="side-item-name">유로/달러 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sf-eurusd-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-eurusd-amt">—</div><div class="side-item-pct" id="sf-eurusd-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/currencies/jpy-krw')"><div class="side-item-left"><div class="side-item-name">엔/원 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sf-jpykrw-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-jpykrw-amt">—</div><div class="side-item-pct" id="sf-jpykrw-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/currencies/gbp-usd')"><div class="side-item-left"><div class="side-item-name">파운드/달러 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sf-gbpusd-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-gbpusd-amt">—</div><div class="side-item-pct" id="sf-gbpusd-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/currencies/usd-jpy')"><div class="side-item-left"><div class="side-item-name">달러/엔 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sf-usdjpy-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-usdjpy-amt">—</div><div class="side-item-pct" id="sf-usdjpy-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/currencies/thb-krw')"><div class="side-item-left"><div class="side-item-name">태국 바트/원 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sf-thbkrw-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-thbkrw-amt">—</div><div class="side-item-pct" id="sf-thbkrw-pct">—</div></div></div>
+        <div class="side-item" onclick="openLink('https://kr.investing.com/indices/usdollar')"><div class="side-item-left"><div class="side-item-name">달러 인덱스 <span class="side-link-icon">↗</span></div><div class="side-item-price" id="sf-usdindex-price">—</div></div><div class="side-item-right"><div class="side-item-amt" id="sf-usdindex-amt">—</div><div class="side-item-pct" id="sf-usdindex-pct">—</div></div></div>
       </div>
 
       <div class="side-footer" id="sideUpdatedAt">갱신 중...</div>
@@ -959,6 +918,9 @@
 
 <script>
   const API_BASE = 'https://stocklens-rxli.onrender.com';
+
+  // 링크 새 탭으로 열기
+  function openLink(url) { window.open(url, '_blank', 'noopener'); }
 
   // ── 사이드바 ──
   let sideChartInst = null;

@@ -3953,23 +3953,54 @@ _INDICES_TTL = 10  # 10초 캐시
 
 
 def get_fear_greed() -> dict:
-    """CNN 공포탐욕 지수 - Alternative.me API"""
+    """CNN 공포탐욕 지수 - CNN Fear & Greed API"""
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+        }
+        res = requests.get(
+            "https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
+            headers=headers, timeout=8
+        )
+        if res.status_code == 200:
+            data = res.json()
+            fg = data.get("fear_and_greed", {})
+            score = fg.get("score")
+            rating = fg.get("rating", "")
+            prev_score = fg.get("previous_close", None)
+            if score is not None:
+                score = round(float(score), 1)
+                label_kr = {
+                    "Extreme Fear": "극도의 공포",
+                    "Fear": "공포",
+                    "Neutral": "중립",
+                    "Greed": "탐욕",
+                    "Extreme Greed": "극도의 탐욕",
+                }.get(rating, rating)
+                change_amt = round(score - float(prev_score), 1) if prev_score else None
+                return {
+                    "name": "공포탐욕 지수",
+                    "price": score,
+                    "change_amt": change_amt,
+                    "change_pct": None,
+                    "label": label_kr,
+                    "score": score,
+                    "error": False,
+                }
+    except Exception:
+        pass
+    # CNN 실패 시 Alternative.me 폴백 (크립토 기반이지만 대체값으로 활용)
     try:
         res = requests.get("https://api.alternative.me/fng/?limit=1", timeout=5)
         if res.status_code == 200:
-            data = res.json()
-            val = data.get("data", [{}])[0]
+            val = res.json().get("data", [{}])[0]
             score = int(val.get("value", 0))
             label = val.get("value_classification", "")
             label_kr = {
-                "Extreme Fear": "극도의 공포",
-                "Fear": "공포",
-                "Neutral": "중립",
-                "Greed": "탐욕",
-                "Extreme Greed": "극도의 탐욕",
+                "Extreme Fear": "극도의 공포", "Fear": "공포",
+                "Neutral": "중립", "Greed": "탐욕", "Extreme Greed": "극도의 탐욕",
             }.get(label, label)
-            # 공포(0)~탐욕(100) 방향: 50 초과면 탐욕(상승), 미만이면 공포(하락)로 표시
-            change_pct = score - 50  # 중립(50) 대비 편차를 변동률처럼 활용
             return {
                 "name": "공포탐욕 지수",
                 "price": float(score),
@@ -3979,7 +4010,7 @@ def get_fear_greed() -> dict:
                 "score": score,
                 "error": False,
             }
-    except Exception as e:
+    except Exception:
         pass
     return {"name": "공포탐욕 지수", "error": True}
 
@@ -4000,7 +4031,7 @@ def get_indices():
         "cboe_vix": (get_yahoo_index, ("^VIX",  "CBOE VIX 지수")),
         "us10y":    (get_yahoo_index, ("^TNX",  "미국 10년물 국채")),
         "us30y":    (get_yahoo_index, ("^TYX",  "미국 30년물 국채")),
-        "usdidx":   (get_yahoo_index, ("DX=F",  "미국 달러 지수")),
+        "usdidx":   (get_yahoo_index, ("DX-Y.NYB", "미국 달러 지수")),
         "gasoline": (get_yahoo_index, ("RB=F",  "미국 가솔린")),
     }
 
