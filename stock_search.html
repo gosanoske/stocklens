@@ -930,7 +930,7 @@
 
 <script>
   const API_BASE = 'https://stocklens-rxli.onrender.com';
-
+  
   // 링크 새 탭으로 열기
   function openLink(url) { window.open(url, '_blank', 'noopener'); }
 
@@ -1408,7 +1408,7 @@
 
   // ── 차트 상태 ──
   let chartInstance = null;
-  let currentChartTicker = null;
+  let currentChartTicker = null;  
   let currentPrevClose = null;
   let currentChartType = 'line'; // 'line' | 'candle'
   let currentLinePeriod = '1D';
@@ -1469,7 +1469,7 @@
     }
   }
 
-  function renderLineChart(data, market, json = {}) {
+  function renderLineChart(data, market, json = {}) {497012
     document.getElementById('chartLoading').style.display = 'none';
     if (!data || data.length === 0) {
       document.getElementById('chartLoading').textContent = '데이터 없음';
