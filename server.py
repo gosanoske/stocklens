@@ -3584,8 +3584,12 @@ def get_chart(q: str, period: str = "1M"):
             "1W":  (today - timedelta(weeks=1),    "D"),
             "1M":  (today - timedelta(days=30),    "D"),
             "3M":  (today - timedelta(days=90),    "D"),
-            "1Y":  (today - timedelta(days=365),   "W"),
-            "10Y": (today - timedelta(days=3650),  "M"),
+            "6M":  (today - timedelta(days=180),   "D"),
+            "1Y":  (today - timedelta(days=365),   "D"),
+            "W_1Y": (today - timedelta(days=365),  "W"),
+            "W_3Y": (today - timedelta(days=1095), "W"),
+            "M_5Y": (today - timedelta(days=1825), "M"),
+            "M_10Y":(today - timedelta(days=3650), "M"),
         }
         start_dt, div_code = period_map.get(period, period_map["1M"])
         start_str = start_dt.strftime("%Y%m%d")

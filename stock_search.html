@@ -318,6 +318,19 @@
   .ma-btn[data-ma="20"].active  { border-color: #6bcb77; color: #6bcb77; background: rgba(107,203,119,0.08); }
   .ma-btn[data-ma="60"].active  { border-color: #4d96ff; color: #4d96ff; background: rgba(77,150,255,0.08); }
   .ma-btn[data-ma="120"].active { border-color: #c77dff; color: #c77dff; background: rgba(199,125,255,0.08); }
+
+  .minute-select {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 3px 8px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    border-radius: 2px;
+    cursor: pointer;
+    outline: none;
+  }
+  .minute-select option { background: var(--surface); color: var(--text); }
   .chart-title {
     font-size: 0.65rem;
     color: var(--label);
@@ -706,10 +719,36 @@
     <div class="chart-section" id="chartSection" style="display:none">
       <div class="chart-header">
         <!-- 봉 종류 탭 -->
-        <div class="chart-type-tabs">
-          <button class="chart-type-btn active" id="btnCandleD" onclick="loadCandleChart('D')">일봉</button>
-          <button class="chart-type-btn" id="btnCandleW" onclick="loadCandleChart('W')">주봉</button>
-          <button class="chart-type-btn" id="btnCandleM" onclick="loadCandleChart('M')">월봉</button>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div class="chart-type-tabs">
+            <button class="chart-type-btn active" id="btnCandleD" onclick="switchCandleType('D')">일봉</button>
+            <button class="chart-type-btn" id="btnCandleW" onclick="switchCandleType('W')">주봉</button>
+            <button class="chart-type-btn" id="btnCandleM" onclick="switchCandleType('M')">월봉</button>
+          </div>
+          <!-- 분봉 셀렉트 -->
+          <select id="minuteSelect" class="minute-select" onchange="switchCandleType('MIN')" style="display:none">
+            <option value="5M">5분봉</option>
+            <option value="10M">10분봉</option>
+            <option value="30M">30분봉</option>
+            <option value="1H">1시간봉</option>
+          </select>
+          <button class="chart-type-btn" id="btnCandleMIN" onclick="switchCandleType('MIN')">분봉</button>
+          <!-- 기간 버튼 (일봉) -->
+          <div class="period-tabs" id="periodTabsD">
+            <button class="period-btn active" onclick="loadCandleChart('3M')">3개월</button>
+            <button class="period-btn" onclick="loadCandleChart('6M')">6개월</button>
+            <button class="period-btn" onclick="loadCandleChart('1Y')">1년</button>
+          </div>
+          <!-- 기간 버튼 (주봉) -->
+          <div class="period-tabs" id="periodTabsW" style="display:none">
+            <button class="period-btn active" onclick="loadCandleChart('W_1Y')">1년</button>
+            <button class="period-btn" onclick="loadCandleChart('W_3Y')">3년</button>
+          </div>
+          <!-- 기간 버튼 (월봉) -->
+          <div class="period-tabs" id="periodTabsM" style="display:none">
+            <button class="period-btn active" onclick="loadCandleChart('M_5Y')">5년</button>
+            <button class="period-btn" onclick="loadCandleChart('M_10Y')">10년</button>
+          </div>
         </div>
         <!-- 이동평균선 토글 -->
         <div class="ma-tabs" id="maTabs">
@@ -1276,12 +1315,8 @@
     currentChartTicker = d.ticker;
     currentPrevClose = d.prev_close;
     currentMarket = d.market;
-    currentCandlePeriod = 'D';
-    ['D','W','M'].forEach(c => {
-      const btn = document.getElementById('btnCandle' + c);
-      if (btn) btn.classList.toggle('active', c === 'D');
-    });
-    loadCandleChart('D');
+    currentCandlePeriod = '3M';
+    switchCandleType('D');
   }
 
   function setText(id, val) { document.getElementById(id).textContent = val ?? '—'; }
@@ -1450,8 +1485,7 @@
       btn.classList.add('active');
     }
     // 차트 재렌더
-    if (currentChartTicker) loadCandleChart(currentCandlePeriod);
-  }
+    if (currentChartTicker) loadCandleChart(currentCandlePeriod);  }
 
   // 이동평균 계산
   function calcMA(closes, period) {
@@ -1463,29 +1497,137 @@
   }
 
   // ── 봉차트 ──
-  const CANDLE_SERVER_MAP = { 'D': '3M', 'W': '1Y', 'M': '10Y' };
+  const CANDLE_SERVER_MAP = {
+    'D':    '3M',
+    'W':    'W_1Y',
+    'M':    'M_5Y',
+    'W_1Y': 'W_1Y',
+    'W_3Y': 'W_3Y',
+    'M_5Y': 'M_5Y',
+    'M_10Y':'M_10Y',
+    '3M':   '3M',
+    '6M':   '6M',
+    '1Y':   '1Y',
+  };
 
-  async function loadCandleChart(divCode) {
+  let currentCandleType = 'D'; // D / W / M / MIN
+
+  // 봉 타입 탭 전환
+  function switchCandleType(type) {
+    currentCandleType = type;
+    const types = ['D','W','M','MIN'];
+    types.forEach(t => {
+      const btn = document.getElementById('btnCandle' + t);
+      if (btn) btn.classList.toggle('active', t === type);
+    });
+    // 기간 탭 표시 전환
+    ['D','W','M'].forEach(t => {
+      const el = document.getElementById('periodTabs' + t);
+      if (el) el.style.display = (type === t || (type === 'D' && t === 'D')) ? 'flex' : 'none';
+    });
+    // 분봉 셀렉트 표시
+    const sel = document.getElementById('minuteSelect');
+    if (sel) sel.style.display = type === 'MIN' ? 'inline-block' : 'none';
+
+    if (type === 'D')   loadCandleChart('3M');
+    else if (type === 'W') loadCandleChart('W_1Y');
+    else if (type === 'M') loadCandleChart('M_5Y');
+    else if (type === 'MIN') {
+      const period = document.getElementById('minuteSelect')?.value || '5M';
+      loadCandleChart(period);
+    }
+  }
+
+  async function loadCandleChart(period) {
     if (!currentChartTicker) return;
-    currentCandlePeriod = divCode;
-    // 탭 버튼 활성화
-    ['D','W','M'].forEach(c => {
-      const btn = document.getElementById('btnCandle' + c);
-      if (btn) btn.classList.toggle('active', c === divCode);
+    currentCandlePeriod = period;
+
+    // 기간 버튼 활성화
+    const tabId = period.startsWith('W') ? 'periodTabsW' : period.startsWith('M_') ? 'periodTabsM' : 'periodTabsD';
+    document.querySelectorAll(`#${tabId} .period-btn`).forEach(b => {
+      b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${period}'`));
     });
 
     document.getElementById('chartLoading').style.display = 'flex';
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
-    const serverPeriod = CANDLE_SERVER_MAP[divCode] || '3M';
+    // 분봉 여부 판단
+    const isMinute = ['5M','10M','30M','1H'].includes(period);
+    const serverPeriod = isMinute ? period : (CANDLE_SERVER_MAP[period] || '3M');
+
     try {
       const res = await fetch(`${API_BASE}/chart?q=${encodeURIComponent(currentChartTicker)}&period=${serverPeriod}`);
       if (!res.ok) throw new Error('차트 데이터 없음');
       const json = await res.json();
-      renderCandleChart(json.data, json.market);
+      if (isMinute) {
+        renderMinuteChart(json.data, json.market, json);
+      } else {
+        renderCandleChart(json.data, json.market);
+      }
     } catch(e) {
       document.getElementById('chartLoading').textContent = '차트 데이터를 불러올 수 없습니다.';
     }
+  }
+
+  // 분봉 차트 (선차트)
+  function renderMinuteChart(data, market, json = {}) {
+    document.getElementById('chartLoading').style.display = 'none';
+    if (!data || data.length === 0) {
+      document.getElementById('chartLoading').textContent = '데이터 없음';
+      document.getElementById('chartLoading').style.display = 'flex';
+      return;
+    }
+    const labels = data.map(d => String(d.date));
+    const closes = data.map(d => d.close);
+    const prevCloses = closes.map((c, i) => i === 0 ? (currentPrevClose || c) : closes[i-1]);
+    const last = closes[closes.length-1];
+    const isUp = last >= (currentPrevClose || closes[0]);
+    const lineColor = isUp ? '#ff4757' : '#4a9eff';
+    const fillColor = isUp ? 'rgba(255,71,87,0.08)' : 'rgba(74,158,255,0.08)';
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{ data: closes, borderColor: lineColor, backgroundColor: fillColor,
+          borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, fill: true, tension: 0.2 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1d28', borderColor: '#2a2d3a', borderWidth: 1,
+            titleColor: '#7a8090', bodyColor: '#e8eaf0',
+            titleFont: { family: 'JetBrains Mono', size: 11 },
+            bodyFont: { family: 'JetBrains Mono', size: 13 },
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.y, idx = ctx.dataIndex;
+                const prev = prevCloses[idx];
+                const priceStr = market === 'KR'
+                  ? '  ₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
+                  : '  $' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+                const diffPct = prev ? ((v-prev)/prev*100) : 0;
+                const diffAmt = prev ? (v-prev) : 0;
+                const sign = diffPct >= 0 ? '+' : '';
+                const arrow = diffPct > 0 ? '▲' : diffPct < 0 ? '▼' : '─';
+                const amtStr = market === 'KR'
+                  ? `${sign}₩${Math.abs(diffAmt).toLocaleString('ko-KR',{maximumFractionDigits:0})}`
+                  : `${sign}$${Math.abs(diffAmt).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+                return [priceStr, `  ${arrow} ${amtStr} (${sign}${diffPct.toFixed(2)}%)`];
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#5a6070',font:{family:'JetBrains Mono',size:10},maxTicksLimit:8,maxRotation:0} },
+          y: { position:'right', grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#5a6070',font:{family:'JetBrains Mono',size:10},
+            callback: v => market==='KR' ? v.toLocaleString('ko-KR',{maximumFractionDigits:0}) : '$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}}
+        }
+      }
+    });
   }
 
   function renderCandleChart(data, market) {
