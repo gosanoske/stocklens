@@ -1675,6 +1675,7 @@
 
     const ctx = document.getElementById('priceChart').getContext('2d');
     chartInstance = new Chart(ctx, {
+      type: 'candlestick',
       data: {
         labels,
         datasets: [
