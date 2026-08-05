@@ -1672,6 +1672,13 @@
       : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
     const ctx = document.getElementById('priceChart').getContext('2d');
+
+    // 데이터 수에 따라 봉 너비 자동 조정
+    const barW = labels.length > 120 ? 0.3
+               : labels.length > 60  ? 0.4
+               : labels.length > 30  ? 0.5
+               : 0.6;
+
     chartInstance = new Chart(ctx, {
       type: 'candlestick',
       data: {
@@ -1681,8 +1688,18 @@
             type: 'candlestick',
             label: currentChartTicker,
             data: candleData,
-            color: { up: '#ff4757', down: '#4a9eff', unchanged: '#888' },
-            borderColor: { up: '#ff4757', down: '#4a9eff', unchanged: '#888' },
+            color: {
+              up: 'rgba(255,71,87,0.85)',
+              down: 'rgba(74,158,255,0.85)',
+              unchanged: 'rgba(136,136,136,0.85)',
+            },
+            borderColor: {
+              up: '#ff4757',
+              down: '#4a9eff',
+              unchanged: '#888',
+            },
+            barPercentage: barW,
+            categoryPercentage: 0.8,
             order: 2,
           },
           ...maDatasets,
