@@ -6,9 +6,7 @@
 <title>StockLens — 주식 종목 검색</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
 <style>
   :root {
     --bg: #0a0c10;
@@ -1645,7 +1643,7 @@
     });
 
     const candleData = data.map((d, i) => ({
-      x: i, o: d.open, h: d.high, l: d.low, c: d.close,
+      x: labels[i], o: d.open, h: d.high, l: d.low, c: d.close,
     }));
 
     // 이전 봉 종가 배열 (등락 계산용)
@@ -1659,7 +1657,7 @@
     const maDatasets = [...activeMA].sort((a, b) => a - b).map(period => ({
       type: 'line',
       label: `MA${period}`,
-      data: calcMA(closes, period),
+      data: calcMA(closes, period).map((v, i) => ({ x: labels[i], y: v })),
       borderColor: MA_COLORS[period],
       borderWidth: 1.2,
       pointRadius: 0,
@@ -1710,7 +1708,7 @@
                 const idx = item.dataIndex;
                 // 이동평균선 툴팁
                 if (item.dataset.type === 'line' || item.dataset.label?.startsWith('MA')) {
-                  const v = item.parsed?.y;
+                  const v = item.parsed?.y ?? item.raw?.y;
                   if (v == null) return null;
                   return `  ${item.dataset.label}: ${fmt(v)}`;
                 }
@@ -1739,6 +1737,7 @@
         },
         scales: {
           x: {
+            type: 'category',
             grid: { color: 'rgba(255,255,255,0.04)' },
             ticks: {
               color: '#5a6070',
