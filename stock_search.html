@@ -6,7 +6,6 @@
 <title>StockLens — 주식 종목 검색</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
 <style>
   :root {
     --bg: #0a0c10;
@@ -1636,148 +1635,205 @@
       return;
     }
 
+    // 기존 canvas 교체 (매번 fresh canvas)
+    const wrap = document.getElementById('priceChart').parentNode;
+    document.getElementById('priceChart').remove();
+    const canvas = document.createElement('canvas');
+    canvas.id = 'priceChart';
+    wrap.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const W = wrap.clientWidth;
+    const H = wrap.clientHeight;
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.scale(dpr, dpr);
+
+    // ── 색상 / 폰트 ──
+    const UP   = '#ff4757';
+    const DOWN = '#4a9eff';
+    const GRID = 'rgba(255,255,255,0.05)';
+    const TEXT = '#5a6070';
+    const FONT = '10px JetBrains Mono';
+
+    // ── 패딩 ──
+    const PAD = { top: 16, right: 70, bottom: 30, left: 8 };
+    const cW = W - PAD.left - PAD.right;
+    const cH = H - PAD.top  - PAD.bottom;
+
+    // ── 데이터 준비 ──
+    const closes = data.map(d => d.close);
     const labels = data.map(d => {
       const s = String(d.date);
-      if (s.length === 8) return `${s.slice(2,4)}.${s.slice(4,6)}.${s.slice(6,8)}`;
-      return s;
+      return s.length === 8 ? `${s.slice(2,4)}.${s.slice(4,6)}.${s.slice(6,8)}` : s;
+    });
+    const prevCloseArr = data.map((d, i) =>
+      i === 0 ? (currentPrevClose || d.open) : data[i-1].close
+    );
+
+    // ── 이동평균선 계산 ──
+    const maLines = {};
+    for (const p of activeMA) maLines[p] = calcMA(closes, p);
+
+    // ── Y축 범위 ──
+    let yMin = Infinity, yMax = -Infinity;
+    data.forEach(d => {
+      yMin = Math.min(yMin, d.low);
+      yMax = Math.max(yMax, d.high);
+    });
+    // MA도 포함
+    for (const arr of Object.values(maLines)) {
+      arr.forEach(v => { if (v != null) { yMin = Math.min(yMin, v); yMax = Math.max(yMax, v); }});
+    }
+    const pad = (yMax - yMin) * 0.05;
+    yMin -= pad; yMax += pad;
+
+    const scaleY = v => PAD.top + cH - ((v - yMin) / (yMax - yMin)) * cH;
+    const N = data.length;
+    const slotW = cW / N;
+    const scaleX = i => PAD.left + (i + 0.5) * slotW;
+
+    // ── 그리드 & Y축 레이블 ──
+    ctx.font = FONT;
+    ctx.fillStyle = TEXT;
+    ctx.textAlign = 'left';
+    const ySteps = 5;
+    for (let i = 0; i <= ySteps; i++) {
+      const v = yMin + (yMax - yMin) * i / ySteps;
+      const y = scaleY(v);
+      ctx.strokeStyle = GRID;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+      const label = market === 'KR'
+        ? v.toLocaleString('ko-KR', {maximumFractionDigits: 0})
+        : '$' + v.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      ctx.fillText(label, W - PAD.right + 4, y + 3);
+    }
+
+    // ── X축 레이블 ──
+    const xStep = Math.max(1, Math.floor(N / 7));
+    ctx.textAlign = 'center';
+    for (let i = 0; i < N; i += xStep) {
+      const x = scaleX(i);
+      ctx.fillStyle = TEXT;
+      ctx.fillText(labels[i], x, H - 6);
+    }
+
+    // ── 봉 그리기 ──
+    const bodyW = Math.max(1, slotW * 0.6);
+    data.forEach((d, i) => {
+      if (!d.open || !d.close) return;
+      const isUp = d.close >= d.open;
+      const color = isUp ? UP : DOWN;
+      const x = scaleX(i);
+      const oY = scaleY(d.open);
+      const cY = scaleY(d.close);
+      const hY = scaleY(d.high);
+      const lY = scaleY(d.low);
+
+      // 심지
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, hY);
+      ctx.lineTo(x, lY);
+      ctx.stroke();
+
+      // 몸통
+      const top = Math.min(oY, cY);
+      const height = Math.max(1, Math.abs(oY - cY));
+      ctx.fillStyle = isUp ? UP : DOWN;
+      ctx.fillRect(x - bodyW / 2, top, bodyW, height);
     });
 
-    const candleData = data.map((d, i) => ({
-      x: labels[i], o: d.open, h: d.high, l: d.low, c: d.close,
-    }));
+    // ── 이동평균선 ──
+    const MA_COLORS_LOCAL = { 5:'#ff6b9d', 10:'#ffd93d', 20:'#6bcb77', 60:'#4d96ff', 120:'#c77dff' };
+    for (const [pStr, arr] of Object.entries(maLines)) {
+      if (!activeMA.has(Number(pStr))) continue;
+      ctx.strokeStyle = MA_COLORS_LOCAL[pStr] || '#aaa';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      let started = false;
+      arr.forEach((v, i) => {
+        if (v == null) return;
+        const x = scaleX(i), y = scaleY(v);
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
 
-    // 이전 봉 종가 배열 (등락 계산용)
-    const prevCloseArr = candleData.map((d, i) => {
-      if (i === 0) return currentPrevClose || d.o;
-      return candleData[i - 1].c;
-    });
-
-    // 이동평균선 데이터셋
-    const closes = data.map(d => d.close);
-    const maDatasets = [...activeMA].sort((a, b) => a - b).map(period => ({
-      type: 'line',
-      label: `MA${period}`,
-      data: calcMA(closes, period).map((v, i) => ({ x: labels[i], y: v })),
-      borderColor: MA_COLORS[period],
-      borderWidth: 1.2,
-      pointRadius: 0,
-      fill: false,
-      tension: 0.3,
-      spanGaps: false,
-      order: 1,
-    }));
-
-    const fmt = (v) => market === 'KR'
+    // ── 툴팁 (마우스 오버) ──
+    const fmt = v => market === 'KR'
       ? '₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
       : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
-    const ctx = document.getElementById('priceChart').getContext('2d');
+    canvas.onmousemove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const i = Math.floor((mx - PAD.left) / slotW);
+      if (i < 0 || i >= N) return;
 
-    // 데이터 수에 따라 봉 너비 자동 조정
-    const barW = labels.length > 120 ? 0.3
-               : labels.length > 60  ? 0.4
-               : labels.length > 30  ? 0.5
-               : 0.6;
+      // 재렌더 (클리어 후 다시 그리기)
+      renderCandleChart(data, market);
 
-    chartInstance = new Chart(ctx, {
-      type: 'candlestick',
-      data: {
-        labels,
-        datasets: [
-          {
-            type: 'candlestick',
-            label: currentChartTicker,
-            data: candleData,
-            color: {
-              up: 'rgba(255,71,87,0.85)',
-              down: 'rgba(74,158,255,0.85)',
-              unchanged: 'rgba(136,136,136,0.85)',
-            },
-            borderColor: {
-              up: '#ff4757',
-              down: '#4a9eff',
-              unchanged: '#888',
-            },
-            barPercentage: barW,
-            categoryPercentage: 0.8,
-            order: 2,
-          },
-          ...maDatasets,
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1a1d28',
-            borderColor: '#2a2d3a',
-            borderWidth: 1,
-            titleColor: '#7a8090',
-            bodyColor: '#e8eaf0',
-            titleFont: { family: 'JetBrains Mono', size: 11 },
-            bodyFont: { family: 'JetBrains Mono', size: 12 },
-            callbacks: {
-              title: items => labels[items[0].dataIndex] || '',
-              label: item => {
-                const idx = item.dataIndex;
-                // 이동평균선 툴팁
-                if (item.dataset.type === 'line' || item.dataset.label?.startsWith('MA')) {
-                  const v = item.parsed?.y ?? item.raw?.y;
-                  if (v == null) return null;
-                  return `  ${item.dataset.label}: ${fmt(v)}`;
-                }
-                // 봉차트 툴팁
-                const d = candleData[idx];
-                if (!d) return '';
-                const prevC = prevCloseArr[idx];
-                const chgAmt = prevC ? (d.c - prevC) : 0;
-                const chgPct = prevC ? (chgAmt / prevC * 100) : 0;
-                const sign = chgPct >= 0 ? '+' : '';
-                const arrow = chgPct > 0 ? '▲' : chgPct < 0 ? '▼' : '─';
-                const amtStr = market === 'KR'
-                  ? `${sign}₩${Math.abs(chgAmt).toLocaleString('ko-KR', {maximumFractionDigits:0})}`
-                  : `${sign}$${Math.abs(chgAmt).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
-                return [
-                  `  시가  ${fmt(d.o)}`,
-                  `  고가  ${fmt(d.h)}`,
-                  `  저가  ${fmt(d.l)}`,
-                  `  종가  ${fmt(d.c)}`,
-                  `  등락  ${arrow} ${amtStr} (${sign}${chgPct.toFixed(2)}%)`,
-                ];
-              },
-              filter: item => item.parsed?.y != null,
-            }
-          }
-        },
-        scales: {
-          x: {
-            type: 'category',
-            grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: {
-              color: '#5a6070',
-              font: { family: 'JetBrains Mono', size: 10 },
-              maxTicksLimit: 8,
-              maxRotation: 0,
-              callback: (val, idx) => labels[idx] || '',
-            }
-          },
-          y: {
-            position: 'right',
-            grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: {
-              color: '#5a6070',
-              font: { family: 'JetBrains Mono', size: 10 },
-              callback: v => market === 'KR'
-                ? v.toLocaleString('ko-KR', {maximumFractionDigits:0})
-                : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
-            }
-          }
-        }
+      const d = data[i];
+      const x = scaleX(i);
+
+      // 크로스헤어
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, H - PAD.bottom); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 툴팁 박스
+      const prevC = prevCloseArr[i];
+      const chgAmt = d.close - prevC;
+      const chgPct = (chgAmt / prevC) * 100;
+      const sign = chgAmt >= 0 ? '+' : '';
+      const arrow = chgAmt > 0 ? '▲' : chgAmt < 0 ? '▼' : '─';
+
+      const lines = [
+        labels[i],
+        `시가  ${fmt(d.open)}`,
+        `고가  ${fmt(d.high)}`,
+        `저가  ${fmt(d.low)}`,
+        `종가  ${fmt(d.close)}`,
+        `등락  ${arrow} ${sign}${fmt(Math.abs(chgAmt))} (${sign}${chgPct.toFixed(2)}%)`,
+      ];
+      for (const [p, arr] of Object.entries(maLines)) {
+        if (!activeMA.has(Number(p)) || arr[i] == null) continue;
+        lines.push(`MA${p}  ${fmt(arr[i])}`);
       }
-    });
+
+      const TW = 210, TH = lines.length * 18 + 16;
+      let tx = x + 12;
+      if (tx + TW > W - PAD.right) tx = x - TW - 12;
+      const ty = Math.max(PAD.top, Math.min(scaleY(d.high) - TH/2, H - PAD.bottom - TH));
+
+      ctx.fillStyle = '#1a1d28';
+      ctx.strokeStyle = '#2a2d3a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(tx, ty, TW, TH, 4);
+      ctx.fill(); ctx.stroke();
+
+      ctx.font = '11px JetBrains Mono';
+      ctx.textAlign = 'left';
+      lines.forEach((line, li) => {
+        ctx.fillStyle = li === 0 ? TEXT : (line.startsWith('고가') ? UP : line.startsWith('저가') ? DOWN : '#e8eaf0');
+        ctx.fillText(line, tx + 10, ty + 14 + li * 18);
+      });
+    };
+
+    canvas.onmouseleave = () => renderCandleChart(data, market);
+
+    // chartInstance 호환용 더미
+    chartInstance = { destroy: () => { canvas.onmousemove = null; canvas.onmouseleave = null; } };
   }
 </script>
 </body>
