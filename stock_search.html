@@ -328,6 +328,23 @@
     outline: none;
   }
   .minute-select option { background: var(--surface); color: var(--text); }
+
+  .draw-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 9px;
+    font-size: 0.7rem;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .draw-btn:hover  { border-color: var(--accent); color: var(--accent); }
+  .draw-btn.active { border-color: #ffd93d; color: #ffd93d; background: rgba(255,217,61,0.08); }
+  .draw-btn.danger { border-color: var(--red); color: var(--red); }
+  .draw-btn.danger:hover { background: rgba(255,71,87,0.08); }
   .chart-title {
     font-size: 0.65rem;
     color: var(--label);
@@ -748,12 +765,20 @@
           </div>
         </div>
         <!-- 이동평균선 토글 -->
-        <div class="ma-tabs" id="maTabs">
-          <button class="ma-btn active" data-ma="5"   onclick="toggleMA(this)">5일</button>
-          <button class="ma-btn active" data-ma="10"  onclick="toggleMA(this)">10일</button>
-          <button class="ma-btn active" data-ma="20"  onclick="toggleMA(this)">20일</button>
-          <button class="ma-btn"        data-ma="60"  onclick="toggleMA(this)">60일</button>
-          <button class="ma-btn"        data-ma="120" onclick="toggleMA(this)">120일</button>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div class="ma-tabs" id="maTabs">
+            <button class="ma-btn active" data-ma="5"   onclick="toggleMA(this)">5일</button>
+            <button class="ma-btn active" data-ma="10"  onclick="toggleMA(this)">10일</button>
+            <button class="ma-btn active" data-ma="20"  onclick="toggleMA(this)">20일</button>
+            <button class="ma-btn"        data-ma="60"  onclick="toggleMA(this)">60일</button>
+            <button class="ma-btn"        data-ma="120" onclick="toggleMA(this)">120일</button>
+          </div>
+          <!-- 선 그리기 도구 -->
+          <div style="display:flex;gap:4px;margin-left:4px;">
+            <button class="draw-btn" id="drawBtnLine" onclick="setDrawMode('line')" title="선 긋기">✏️ 선</button>
+            <button class="draw-btn" id="drawBtnHoriz" onclick="setDrawMode('horiz')" title="수평선">— 수평</button>
+            <button class="draw-btn danger" id="drawBtnClear" onclick="clearDrawings()" title="선 모두 지우기">✕ 지우기</button>
+          </div>
         </div>
       </div>
       <div class="chart-wrap">
@@ -1766,75 +1791,218 @@
       ctx.stroke();
     }
 
-    // ── 툴팁 (마우스 오버) ──
+    // ── 선 그리기 ──
+  let drawMode   = null;   // 'line' | 'horiz' | null
+  let drawings   = [];     // 저장된 선 목록 [{type, x1,y1,x2,y2 in canvas coords}]
+  let drawStart  = null;   // 드래그 시작점
+
+  function setDrawMode(mode) {
+    drawMode = drawMode === mode ? null : mode;
+    document.getElementById('drawBtnLine')?.classList.toggle('active', drawMode === 'line');
+    document.getElementById('drawBtnHoriz')?.classList.toggle('active', drawMode === 'horiz');
+    const canvas = document.getElementById('priceChart');
+    if (canvas) canvas.style.cursor = drawMode ? 'crosshair' : 'default';
+  }
+
+  function clearDrawings() {
+    drawings = [];
+    const canvas = document.getElementById('priceChart');
+    if (canvas && canvas._drawBase) canvas._drawBase();
+  }
+
+  function drawLines(ctx, W, H, dpr) {
+    if (!drawings.length) return;
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    drawings.forEach(ln => {
+      ctx.strokeStyle = '#ffd93d';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(ln.x1, ln.y1);
+      ctx.lineTo(ln.x2, ln.y2);
+      ctx.stroke();
+      // 작은 원으로 끝점 표시
+      ctx.fillStyle = '#ffd93d';
+      ctx.beginPath(); ctx.arc(ln.x1, ln.y1, 3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ln.x2, ln.y2, 3, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.restore();
+  }
     const fmt = v => market === 'KR'
       ? '₩' + v.toLocaleString('ko-KR', {maximumFractionDigits:0})
       : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
+    // 기본 차트만 그리는 함수 (캔버스 클리어 없이)
+    function drawBase() {
+      ctx.clearRect(0, 0, W * dpr, H * dpr);
+      ctx.save(); ctx.scale(dpr, dpr);
+
+      // 그리드 & Y축
+      ctx.font = FONT; ctx.fillStyle = TEXT; ctx.textAlign = 'left';
+      for (let gi = 0; gi <= ySteps; gi++) {
+        const v = yMin + (yMax - yMin) * gi / ySteps;
+        const y = scaleY(v);
+        ctx.strokeStyle = GRID; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+        const lbl = market === 'KR'
+          ? v.toLocaleString('ko-KR', {maximumFractionDigits:0})
+          : '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+        ctx.fillStyle = TEXT; ctx.fillText(lbl, W - PAD.right + 4, y + 3);
+      }
+      // X축
+      ctx.textAlign = 'center';
+      for (let xi = 0; xi < N; xi += xStep) {
+        ctx.fillStyle = TEXT;
+        ctx.fillText(labels[xi], scaleX(xi), H - 6);
+      }
+      // 봉
+      data.forEach((d, i) => {
+        if (!d.open || !d.close) return;
+        const isUp = d.close >= d.open;
+        const color = isUp ? UP : DOWN;
+        const x = scaleX(i);
+        ctx.strokeStyle = color; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, scaleY(d.high)); ctx.lineTo(x, scaleY(d.low)); ctx.stroke();
+        const top = Math.min(scaleY(d.open), scaleY(d.close));
+        const bh  = Math.max(1, Math.abs(scaleY(d.open) - scaleY(d.close)));
+        ctx.fillStyle = color;
+        ctx.fillRect(x - bodyW / 2, top, bodyW, bh);
+      });
+      // MA
+      const MA_C = { 5:'#ff6b9d', 10:'#ffd93d', 20:'#6bcb77', 60:'#4d96ff', 120:'#c77dff' };
+      for (const [pStr, arr] of Object.entries(maLines)) {
+        if (!activeMA.has(Number(pStr))) continue;
+        ctx.strokeStyle = MA_C[pStr] || '#aaa'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); let started = false;
+        arr.forEach((v, i) => {
+          if (v == null) return;
+          const x = scaleX(i), y = scaleY(v);
+          if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+      ctx.restore();
+      drawLines(ctx, W, H, dpr);
+    }
+
+    // canvas에 drawBase 참조 저장 (clearDrawings에서 사용)
+    canvas._drawBase = drawBase;
+    drawBase();
+
+    canvas.onmousedown = (e) => {
+      if (!drawMode) return;
+      const rect = canvas.getBoundingClientRect();
+      drawStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+
     canvas.onmousemove = (e) => {
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left;
-      const i = Math.floor((mx - PAD.left) / slotW);
-      if (i < 0 || i >= N) return;
+      const my = e.clientY - rect.top;
+      const i  = Math.floor((mx - PAD.left) / slotW);
 
-      // 재렌더 (클리어 후 다시 그리기)
-      renderCandleChart(data, market);
+      // 드래그 중: 임시 선 미리보기
+      if (drawMode && drawStart && e.buttons === 1) {
+        drawBase();
+        ctx.save(); ctx.scale(dpr, dpr);
+        ctx.strokeStyle = 'rgba(255,217,61,0.7)';
+        ctx.lineWidth = 1.5; ctx.setLineDash([6,3]);
+        ctx.beginPath(); ctx.moveTo(drawStart.x, drawStart.y);
+        ctx.lineTo(drawMode === 'horiz' ? mx : mx, drawMode === 'horiz' ? drawStart.y : my);
+        ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+        return;
+      }
+
+      if (i < 0 || i >= N) { drawBase(); return; }
+      if (drawMode) return; // 그리기 모드일 땐 툴팁 안 보여줌
+
+      drawBase();
 
       const d = data[i];
       const x = scaleX(i);
 
       // 크로스헤어
+      ctx.save(); ctx.scale(dpr, dpr);
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, H - PAD.bottom); ctx.stroke();
       ctx.setLineDash([]);
 
-      // 툴팁 박스
-      const prevC = prevCloseArr[i];
+      // 툴팁 내용
+      const prevC  = prevCloseArr[i];
       const chgAmt = d.close - prevC;
       const chgPct = (chgAmt / prevC) * 100;
-      const sign = chgAmt >= 0 ? '+' : '';
-      const arrow = chgAmt > 0 ? '▲' : chgAmt < 0 ? '▼' : '─';
+      const sign   = chgAmt >= 0 ? '+' : '';
+      const arrow  = chgAmt > 0 ? '▲' : chgAmt < 0 ? '▼' : '─';
+      const chgColor = chgAmt >= 0 ? UP : DOWN;
 
-      const lines = [
-        labels[i],
-        `시가  ${fmt(d.open)}`,
-        `고가  ${fmt(d.high)}`,
-        `저가  ${fmt(d.low)}`,
-        `종가  ${fmt(d.close)}`,
-        `등락  ${arrow} ${sign}${fmt(Math.abs(chgAmt))} (${sign}${chgPct.toFixed(2)}%)`,
+      const maEntries = [5, 10, 20, 60, 120]
+        .filter(p => activeMA.has(p) && maLines[p] && maLines[p][i] != null)
+        .map(p => ({ p, v: maLines[p][i] }));
+
+      const lineH = 17;
+      const rows = [
+        { text: labels[i], color: '#7a8090' },
+        { text: `시가`, val: fmt(d.open),  color: '#e8eaf0' },
+        { text: `고가`, val: fmt(d.high),  color: UP },
+        { text: `저가`, val: fmt(d.low),   color: DOWN },
+        { text: `종가`, val: fmt(d.close), color: '#e8eaf0' },
+        { text: `등락`, val: `${arrow} ${sign}${fmt(Math.abs(chgAmt))} (${sign}${chgPct.toFixed(2)}%)`, color: chgColor },
+        ...maEntries.map(({p,v}) => ({ text: `MA${p}`, val: fmt(v), color: { 5:'#ff6b9d',10:'#ffd93d',20:'#6bcb77',60:'#4d96ff',120:'#c77dff' }[p] })),
       ];
-      for (const [p, arr] of Object.entries(maLines)) {
-        if (!activeMA.has(Number(p)) || arr[i] == null) continue;
-        lines.push(`MA${p}  ${fmt(arr[i])}`);
-      }
 
-      const TW = 210, TH = lines.length * 18 + 16;
-      let tx = x + 12;
-      if (tx + TW > W - PAD.right) tx = x - TW - 12;
-      const ty = Math.max(PAD.top, Math.min(scaleY(d.high) - TH/2, H - PAD.bottom - TH));
+      const TW = 220;
+      const TH = rows.length * lineH + 14;
+      let tx = x + 14;
+      if (tx + TW > W - PAD.right) tx = x - TW - 14;
+      const ty = Math.max(PAD.top + 4, Math.min(scaleY(d.high) - TH / 2, H - PAD.bottom - TH - 4));
 
-      ctx.fillStyle = '#1a1d28';
-      ctx.strokeStyle = '#2a2d3a';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(tx, ty, TW, TH, 4);
-      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(20,22,32,0.92)';
+      ctx.strokeStyle = '#2a2d3a'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(tx, ty, TW, TH, 4); ctx.fill(); ctx.stroke();
 
       ctx.font = '11px JetBrains Mono';
-      ctx.textAlign = 'left';
-      lines.forEach((line, li) => {
-        ctx.fillStyle = li === 0 ? TEXT : (line.startsWith('고가') ? UP : line.startsWith('저가') ? DOWN : '#e8eaf0');
-        ctx.fillText(line, tx + 10, ty + 14 + li * 18);
+      rows.forEach((row, ri) => {
+        const ry = ty + 12 + ri * lineH;
+        if (row.val !== undefined) {
+          ctx.fillStyle = '#7a8090'; ctx.textAlign = 'left';
+          ctx.fillText(row.text, tx + 10, ry);
+          ctx.fillStyle = row.color; ctx.textAlign = 'right';
+          ctx.fillText(row.val, tx + TW - 10, ry);
+        } else {
+          ctx.fillStyle = row.color; ctx.textAlign = 'left';
+          ctx.fillText(row.text, tx + 10, ry);
+        }
       });
+      ctx.restore();
     };
 
-    canvas.onmouseleave = () => renderCandleChart(data, market);
+    canvas.onmouseup = (e) => {
+      if (!drawMode || !drawStart) return;
+      const rect = canvas.getBoundingClientRect();
+      const ex = e.clientX - rect.left;
+      const ey = e.clientY - rect.top;
+      drawings.push({
+        x1: drawStart.x,
+        y1: drawStart.y,
+        x2: drawMode === 'horiz' ? ex : ex,
+        y2: drawMode === 'horiz' ? drawStart.y : ey,
+      });
+      drawStart = null;
+      drawBase();
+    };
 
-    // chartInstance 호환용 더미
-    chartInstance = { destroy: () => { canvas.onmousemove = null; canvas.onmouseleave = null; } };
-  }
+    canvas.onmouseleave = () => { drawStart = null; drawBase(); };
+
+    chartInstance = { destroy: () => {
+      canvas.onmousemove  = null;
+      canvas.onmousedown  = null;
+      canvas.onmouseup    = null;
+      canvas.onmouseleave = null;
+      canvas._drawBase    = null;
+    }};
+  }  // renderCandleChart 끝
 </script>
 </body>
 </html>
