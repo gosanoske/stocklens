@@ -3927,6 +3927,62 @@ def get_kr_index(iscd: str, name: str) -> dict:
     }
 
 
+_INV_PARAMS = {
+    "kospi":  {"FID_INPUT_ISCD": "KSP", "FID_INPUT_ISCD_2": "0001"},
+    "kosdaq": {"FID_INPUT_ISCD": "KSQ", "FID_INPUT_ISCD_2": "1001"},
+}
+
+
+def _inv_request(market: str):
+    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market"
+    return requests.get(url, headers=kis_headers("FHPTJ04030000"),
+                        params=_INV_PARAMS[market], timeout=8)
+
+
+def get_investor_trend(market: str) -> dict:
+    """시장별 투자자 순매수 (단위: 억원). 필드명은 /debug/investors 로 검증 필요"""
+    try:
+        res = _inv_request(market)
+        j = res.json()
+        out = j.get("output") or j.get("output1") or []
+        row = out[0] if isinstance(out, list) and out else (out if isinstance(out, dict) else {})
+        def eok(*keys):
+            for k in keys:
+                if k in row and row[k] not in (None, ""):
+                    return round(safe_float(row[k]) / 100)  # 백만원 -> 억원
+            return None
+        return {
+            "person": eok("prsn_ntby_tr_pbmn"),
+            "foreign": eok("frgn_ntby_tr_pbmn"),
+            "inst": eok("orgn_ntby_tr_pbmn"),
+            "error": False,
+        }
+    except Exception:
+        return {"person": None, "foreign": None, "inst": None, "error": True}
+
+
+_inv_cache = {"data": None, "ts": 0}
+
+
+@app.get("/investors")
+def investors():
+    now = time.time()
+    if _inv_cache["data"] and now - _inv_cache["ts"] < 10:
+        return _inv_cache["data"]
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f = {m: ex.submit(get_investor_trend, m) for m in ("kospi", "kosdaq")}
+        data = {m: fu.result() for m, fu in f.items()}
+    _inv_cache["data"], _inv_cache["ts"] = data, now
+    return data
+
+
+@app.get("/debug/investors")
+def debug_investors(market: str = "kospi"):
+    """투자자 동향 실제 응답 확인용 (개발용)"""
+    res = _inv_request(market)
+    return {"status_code": res.status_code, "raw": res.json()}
+
+
 @app.get("/debug/index")
 def debug_index(iscd: str = "0001"):
     """KIS 지수 API 실제 응답 필드 확인용 (개발용)"""
